@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Scenario ROC Threshold Lab</title>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<script>window.MathJax={tex:{inlineMath:[['\\(','\\)'],['$','$']]}};</script>
+<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<style>
+body{font-family:Arial;margin:0;background:#f6f7fb;color:#222}header{background:#1f2937;color:white;padding:18px 24px}
+main{display:grid;grid-template-columns:380px 1fr;gap:16px;padding:16px}.card{background:white;border-radius:12px;padding:14px;box-shadow:0 1px 6px #0002;margin-bottom:14px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.kpi{background:#eef2f7;padding:8px;border-radius:8px;text-align:center}.kpi b{display:block}
+label{display:block;margin-top:10px;font-weight:700}#roc,#pr,#rank,#cost,#scores{height:330px}.note{background:#eef2ff;border-left:4px solid #4f46e5;padding:10px;border-radius:8px}.small{font-size:13px;color:#555;line-height:1.45}
+</style></head><body>
+<header><h2 style="margin:0">Scenario ROC Threshold and Cost Lab</h2><div class="small" style="color:#d1d5db">See how cancer screening, spam filtering, fraud review, and equal-cost classification imply different thresholds.</div></header>
+<main>
+<section>
+<div class="card">
+<label>Scenario</label><select id="scenario"><option value="balanced">Balanced / equal costs</option><option value="cancer">Cancer screening</option><option value="spam">Spam filtering</option><option value="fraud">Fraud review</option></select>
+<div id="desc" class="note" style="margin-top:10px"></div>
+<label>Threshold <span id="tv"></span></label><input id="thr" type="range" min="0" max="1" step="0.01" value="0.5">
+<div class="grid2">
+<div><label>Positive count</label><input id="npos" type="number" value="200"></div><div><label>Negative count</label><input id="nneg" type="number" value="200"></div>
+<div><label>Cost(FN)</label><input id="cfn" type="number" value="1"></div><div><label>Cost(FP)</label><input id="cfp" type="number" value="1"></div>
+<div><label>Top-k review capacity</label><input id="topk" type="number" value="100"></div>
+</div>
+<div id="kpis" class="kpis" style="margin-top:12px"></div>
+</div>
+<div class="card"><h3>Visible panels</h3>
+<label><input id="showPR" type="checkbox" checked> Precision–Recall</label>
+<label><input id="showCost" type="checkbox" checked> Cost curve</label>
+<label><input id="showRank" type="checkbox" checked> Ranking / top-k</label>
+</div>
+<div class="card"><h3>How the best point is chosen</h3><div class="small">
+Each threshold gives one ROC point. A cost isometric has slope
+\[
+\frac{P(+)C_{FN}}{P(-)C_{FP}}.
+\]
+Slide that line toward the upper-left. The last attainable contact point is the threshold with minimum expected cost. At a smooth interior optimum, the ROC tangent and the isometric have the same slope.
+</div></div>
+</section>
+<section>
+<div class="card"><h3>How to compute the optimal threshold efficiently</h3>
+<div class="small">
+<p><b>Empirical data:</b> the ROC curve changes only when the threshold crosses a distinct score. Sort scores once from highest to lowest, update TP/FP while sweeping, and evaluate every distinct threshold.</p>
+<p>For equal prevalence and equal costs:</p>
+<p>\[
+t^*=\arg\max_t\{TPR(t)-FPR(t)\}
+\]</p>
+<p>This is Youden's \(J\). You still scan the ROC points, but the scan is linear after sorting.</p>
+<p>For unequal prevalence or costs:</p>
+<p>\[
+t^*=\arg\min_t\left[P(+)C_{FN}FNR(t)+P(-)C_{FP}FPR(t)\right]
+\]</p>
+<p>The practical algorithm is again a single scan over distinct thresholds. There is generally no need to compute a derivative, because an empirical ROC is a staircase with corners and ties.</p>
+<p><b>Smooth theoretical case:</b> if the population ROC is differentiable, an interior optimum satisfies:</p>
+<p>\[
+\frac{dTPR}{dFPR}=\frac{P(-)C_{FP}}{P(+)C_{FN}}
+\]</p>
+<p>This tangency equation is a characterization of the optimum, not usually the fastest empirical implementation.</p>
+</div></div>
+
+<div class="grid2"><div class="card"><h3>Score distributions</h3><div id="scores"></div></div><div class="card"><h3>ROC + cost isometric</h3><div id="roc"></div></div></div>
+<div class="grid2">
+<div id="prCard" class="card"><h3>Precision–Recall</h3><div id="pr"></div></div>
+<div id="costCard" class="card"><h3>Cost curve</h3><div id="cost"></div></div>
+</div>
+<div id="rankCard" class="card"><h3>Ranking / top-k productivity</h3><div id="rank"></div></div>
+<div class="card"><h3>Cost and threshold — intuitive guide</h3>
+<div class="note">
+<b>Symbols</b><br>
+\(P(+)\): prevalence of positives, the fraction of real positive cases.<br>
+\(P(-)=1-P(+)\): prevalence of negatives.<br>
+\(C_{FN}\): cost of missing one positive.<br>
+\(C_{FP}\): cost of one false alarm.<br><br>
+<b>Expected cost</b><br>
+\[
+EC=P(+)C_{FN}FNR+P(-)C_{FP}FPR.
+\]
+The first term is the expected loss from missed positives. The second is the expected loss from false alarms.
+<br><br>
+<b>Cost isometric</b><br>
+All ROC points with the same expected cost lie on one straight line. Its slope is
+\[
+rac{P(+)C_{FN}}{P(-)C_{FP}}.
+\]
+A large slope means missed positives dominate; a small slope means false alarms dominate.
+<br><br>
+<b>How to choose a threshold</b><br>
+Evaluate every distinct score threshold, compute its ROC point and expected cost, and choose the threshold with the smallest cost. Geometrically, slide a parallel cost line toward the upper-left until it last touches the ROC curve or convex hull.
+</div></div>
+</section></main>
+<script>
+function rng(seed){let s=seed>>>0;return()=>((s=(1664525*s+1013904223)>>>0)/4294967296)}
+function normal(r){const u=r()||1e-9,v=r();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v)}
+function sigmoid(z){return 1/(1+Math.exp(-z))}
+function gen(np,nn){const r=rng(42),p=[],n=[];for(let i=0;i<np;i++)p.push(sigmoid(1.25+1.05*normal(r)));for(let i=0;i<nn;i++)n.push(sigmoid(-1.25+1.05*normal(r)));return{p,n}}
+function cm(p,n,t){let TP=0,FN=0,FP=0,TN=0;p.forEach(s=>s>=t?TP++:FN++);n.forEach(s=>s>=t?FP++:TN++);return{TP,FN,FP,TN}}
+function q(a,b){return b? a/b:NaN}
+function mets(z){let tpr=q(z.TP,z.TP+z.FN),fpr=q(z.FP,z.FP+z.TN),pr=q(z.TP,z.TP+z.FP),tnr=1-fpr;return{tpr,fpr,pr,tnr,f1:q(2*z.TP,2*z.TP+z.FP+z.FN),ba:(tpr+tnr)/2,g:Math.sqrt(tpr*tnr)}}
+function curve(p,n){return Array.from({length:201},(_,i)=>{let t=1-i/200,z=cm(p,n,t);return{t,z,...mets(z)}})}
+function auc(a){let s=0;for(let i=1;i<a.length;i++)s+=(a[i].fpr-a[i-1].fpr)*(a[i].tpr+a[i-1].tpr)/2;return s}
+function setScenario(){
+if(scenario.value==='balanced'){npos.value=200;nneg.value=200;cfn.value=1;cfp.value=1;topk.value=100;desc.innerHTML='<b>Equal importance:</b> maximize overall correctness. The optimum is close to maximizing TPR−FPR.'}
+if(scenario.value==='cancer'){npos.value=80;nneg.value=920;cfn.value=12;cfp.value=1;topk.value=150;desc.innerHTML='<b>False negatives are costly:</b> use a lower threshold to gain sensitivity, while watching false-positive follow-up burden.'}
+if(scenario.value==='spam'){npos.value=300;nneg.value=700;cfn.value=1;cfp.value=8;topk.value=200;desc.innerHTML='<b>False positives are costly:</b> legitimate email must not be sent to spam, so use a higher threshold and emphasize specificity/precision.'}
+if(scenario.value==='fraud'){npos.value=40;nneg.value=1960;cfn.value=6;cfp.value=1;topk.value=100;desc.innerHTML='<b>Rare positives and limited analysts:</b> ranking, precision@k, lift@k, and recall among reviewed cases are central.'}}
+function update(){
+let {p,n}=gen(+npos.value,+nneg.value),a=curve(p,n),t=+thr.value,z=cm(p,n,t),m=mets(z),prev=p.length/(p.length+n.length),fnc=+cfn.value,fpc=+cfp.value;tv.textContent=t.toFixed(2);
+let ec=prev*fnc*(1-m.tpr)+(1-prev)*fpc*m.fpr,acc=(z.TP+z.TN)/(p.length+n.length);
+let items=p.map(s=>({s,y:1})).concat(n.map(s=>({s,y:0}))).sort((u,v)=>v.s-u.s),k=Math.min(+topk.value,items.length),found=items.slice(0,k).reduce((s,u)=>s+u.y,0),pk=found/k,lift=pk/prev;
+kpis.innerHTML=[['Accuracy',acc],['Recall',m.tpr],['Precision',m.pr],['Specificity',m.tnr],['F1',m.f1],['Balanced acc.',m.ba],['G-mean',m.g],['Expected cost',ec],['AUC',auc(a)],['Precision@k',pk],['Lift@k',lift],['Threshold',t]].map(([n,v])=>`<div class="kpi"><span>${n}</span><b>${Number.isFinite(v)?v.toFixed(3):'undef'}</b></div>`).join('');
+let slope=prev*fnc/((1-prev)*fpc),b=m.tpr-slope*m.fpr;
+Plotly.react('scores',[{x:p,type:'histogram',opacity:.6,name:'positive scores'},{x:n,type:'histogram',opacity:.6,name:'negative scores'},{x:[t,t],y:[0,Math.max(p.length,n.length)/5],type:'scatter',mode:'lines',name:'threshold'}],{barmode:'overlay',margin:{l:50,r:15,b:45,t:10},xaxis:{title:'score',range:[0,1]},yaxis:{title:'count'}},{responsive:true});
+Plotly.react('roc',[{x:a.map(v=>v.fpr),y:a.map(v=>v.tpr),type:'scatter',mode:'lines',name:'ROC'},{x:[0,1],y:[0,1],type:'scatter',mode:'lines',line:{dash:'dot'},name:'random'},{x:[m.fpr],y:[m.tpr],type:'scatter',mode:'markers+text',marker:{size:13},text:[`t=${t.toFixed(2)}`],textposition:'top center',name:'current'},{x:[0,1],y:[b,b+slope],type:'scatter',mode:'lines',line:{dash:'dash',width:4},name:`cost isometric slope=${slope.toFixed(2)}`}],{margin:{l:55,r:15,b:50,t:10},xaxis:{title:'FPR',range:[0,1]},yaxis:{title:'TPR',range:[0,1]}},{responsive:true});
+Plotly.react('pr',[{x:a.map(v=>v.tpr),y:a.map(v=>v.pr),type:'scatter',mode:'lines',name:'PR'},{x:[0,1],y:[prev,prev],type:'scatter',mode:'lines',line:{dash:'dot'},name:'baseline'},{x:[m.tpr],y:[m.pr],type:'scatter',mode:'markers+text',marker:{size:13},text:[`t=${t.toFixed(2)}`],textposition:'top center'}],{margin:{l:55,r:15,b:50,t:10},xaxis:{title:'Recall',range:[0,1]},yaxis:{title:'Precision',range:[0,1]}},{responsive:true});
+let pc=Array.from({length:101},(_,i)=>i/100),env=pc.map(r=>Math.min(...a.map(v=>(1-v.tpr)*r+v.fpr*(1-r))));
+Plotly.react('cost',[{x:pc,y:env,type:'scatter',mode:'lines',name:'minimum normalized cost'}],{margin:{l:55,r:15,b:50,t:10},xaxis:{title:'probability-cost condition'},yaxis:{title:'normalized expected cost'}},{responsive:true});
+let seen=0,xs=[],ys=[];items.forEach((u,i)=>{seen+=u.y;xs.push((i+1)/items.length);ys.push(seen/(i+1))});
+Plotly.react('rank',[{x:xs,y:ys,type:'scatter',mode:'lines',name:'precision in inspected prefix'},{x:[0,1],y:[prev,prev],type:'scatter',mode:'lines',line:{dash:'dot'},name:'random baseline'},{x:[k/items.length],y:[pk],type:'scatter',mode:'markers+text',marker:{size:12},text:[`top ${k}, lift=${lift.toFixed(1)}`],textposition:'top center'}],{margin:{l:55,r:15,b:50,t:10},xaxis:{title:'fraction inspected'},yaxis:{title:'precision among inspected'}},{responsive:true})}
+function panels(){prCard.style.display=showPR.checked?'block':'none';costCard.style.display=showCost.checked?'block':'none';rankCard.style.display=showRank.checked?'block':'none'}
+scenario.addEventListener('change',()=>{setScenario();update()});
+[thr,npos,nneg,cfn,cfp,topk].forEach(e=>e.addEventListener('input',update));
+[showPR,showCost,showRank].forEach(e=>e.addEventListener('change',panels));
+setScenario();panels();update();
+</script></body></html>

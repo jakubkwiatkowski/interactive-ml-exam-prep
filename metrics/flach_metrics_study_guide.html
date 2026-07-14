@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang='en'>
+<head>
+<meta charset='utf-8'>
+<title>Flach Metrics Study Guide</title>
+<script>window.MathJax={tex:{inlineMath:[['\\(','\\)'],['$','$']]}};</script>
+<script defer src='https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js'></script>
+<style>
+body{font-family:Arial,sans-serif;margin:0;background:#f6f7fb;color:#222}
+header{background:#1f2937;color:#fff;padding:18px 24px;position:sticky;top:0;z-index:10}
+main{display:grid;grid-template-columns:280px 1fr;gap:18px;padding:16px}
+nav{background:#fff;border-radius:12px;padding:14px;box-shadow:0 1px 6px #0002;position:sticky;top:86px;height:calc(100vh - 120px);overflow:auto}
+section{background:#fff;border-radius:12px;padding:18px;box-shadow:0 1px 6px #0002;margin-bottom:16px}
+nav a{display:block;padding:6px 0;color:#0f172a;text-decoration:none}
+h2{margin-top:0}.callout{background:#eef2ff;border-left:4px solid #4f46e5;padding:10px 12px;border-radius:8px;margin:10px 0}
+.warn{background:#fff7ed;border-left-color:#ea580c}.good{background:#ecfdf5;border-left-color:#16a34a}
+.small{font-size:13px;color:#555;line-height:1.4}
+table{border-collapse:collapse;width:100%;margin:10px 0} th,td{border:1px solid #cbd5e1;padding:8px;vertical-align:top} th{background:#eef2f7}
+.diagram{background:#fafafa;border:1px solid #e5e7eb;border-radius:10px;padding:12px;margin:12px 0}
+.flex{display:flex;gap:12px;flex-wrap:wrap}.card{flex:1 1 250px;background:#f8fafc;border:1px solid #e5e7eb;border-radius:10px;padding:12px}
+.kicker{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:#475569;margin-bottom:4px}
+details{margin:8px 0;background:#f8fafc;padding:8px 10px;border-radius:8px} summary{cursor:pointer;font-weight:bold}
+svg text{font-family:Arial,sans-serif}
+</style></head><body>
+<header><h1 style='margin:0;font-size:28px;'>Performance Metrics Study Guide</h1>
+<div class='small' style='color:#d1d5db'>Focused on Flach’s ROC-isometric ideas, AUC-related insights, and the “other measures” from your slides.</div></header>
+<main>
+<nav>
+<a href='#unified'>1. Unified diagram: 3 sensitivities</a>
+<a href='#flachsummary'>2. Flach paper: exam summary</a>
+<a href='#slope'>3. Effective skew ratio and slope</a>
+<a href='#derivative'>4. Derivative / skew sensitivity</a>
+<a href='#balancedacc'>5. Balanced accuracy</a>
+<a href='#skewcost'>6. Skew and cost considerations</a>
+<a href='#fpref'>7. Fα / Fβ / F1 / G-mean</a>
+<a href='#multiclass'>8. Multi-class vs single-class focus</a>
+<a href='#aucslides'>9. AUC and ROC slides explained</a>
+<a href='#othermeasures'>10. smROC, H, Information score, Efficiency</a>
+<a href='#agreement'>11. Multi-rater agreement</a>
+<a href='#visual'>12. Visualisation-based & chance-corrected measures</a>
+<a href='#next'>What to study for the exam</a>
+</nav>
+<div>
+<section id='unified'>
+<h2>1. Unified diagram: effective skew ratio vs skew sensitivity vs threshold sensitivity</h2>
+<div class='diagram'>
+<svg width='100%' viewBox='0 0 980 300'>
+<defs><marker id='arrow' markerWidth='10' markerHeight='10' refX='8' refY='3' orient='auto' markerUnits='strokeWidth'><path d='M0,0 L0,6 L9,3 z' fill='#334155'></path></marker></defs>
+<rect x='20' y='40' width='180' height='90' rx='12' fill='#dbeafe' stroke='#2563eb'/><text x='110' y='72' text-anchor='middle' font-size='18' font-weight='bold'>Threshold</text><text x='110' y='96' text-anchor='middle' font-size='14'>changes operating point</text><text x='110' y='116' text-anchor='middle' font-size='14'>along a ROC / PR curve</text>
+<rect x='250' y='40' width='220' height='90' rx='12' fill='#dcfce7' stroke='#16a34a'/><text x='360' y='68' text-anchor='middle' font-size='18' font-weight='bold'>(FPR, TPR)</text><text x='360' y='92' text-anchor='middle' font-size='14'>one point in ROC space</text><text x='360' y='112' text-anchor='middle' font-size='14'>for one chosen threshold</text>
+<rect x='530' y='30' width='190' height='110' rx='12' fill='#fef3c7' stroke='#d97706'/><text x='625' y='58' text-anchor='middle' font-size='18' font-weight='bold'>Metric surface</text><text x='625' y='82' text-anchor='middle' font-size='14'>M(FPR,TPR,c)</text><text x='625' y='102' text-anchor='middle' font-size='14'>depends on evaluation</text><text x='625' y='122' text-anchor='middle' font-size='14'>context</text>
+<rect x='770' y='20' width='180' height='80' rx='12' fill='#f5d0fe' stroke='#a21caf'/><text x='860' y='48' text-anchor='middle' font-size='16' font-weight='bold'>Threshold sensitivity</text><text x='860' y='68' text-anchor='middle' font-size='13'>How metric changes when</text><text x='860' y='84' text-anchor='middle' font-size='13'>threshold moves</text>
+<rect x='770' y='115' width='180' height='80' rx='12' fill='#fee2e2' stroke='#dc2626'/><text x='860' y='143' text-anchor='middle' font-size='16' font-weight='bold'>Effective skew ratio</text><text x='860' y='163' text-anchor='middle' font-size='13'>Slope of the 2D</text><text x='860' y='179' text-anchor='middle' font-size='13'>isometric in ROC space</text>
+<rect x='770' y='210' width='180' height='80' rx='12' fill='#e0f2fe' stroke='#0284c7'/><text x='860' y='238' text-anchor='middle' font-size='16' font-weight='bold'>Skew sensitivity</text><text x='860' y='258' text-anchor='middle' font-size='13'>How the metric value</text><text x='860' y='274' text-anchor='middle' font-size='13'>changes if c or prevalence changes</text>
+<line x1='200' y1='85' x2='250' y2='85' stroke='#334155' stroke-width='2.5' marker-end='url(#arrow)'/>
+<line x1='470' y1='85' x2='530' y2='85' stroke='#334155' stroke-width='2.5' marker-end='url(#arrow)'/>
+<line x1='720' y1='85' x2='770' y2='60' stroke='#334155' stroke-width='2.5' marker-end='url(#arrow)'/>
+<line x1='720' y1='85' x2='770' y2='155' stroke='#334155' stroke-width='2.5' marker-end='url(#arrow)'/>
+<line x1='720' y1='85' x2='770' y2='250' stroke='#334155' stroke-width='2.5' marker-end='url(#arrow)'/>
+</svg></div>
+<div class='flex'>
+<div class='card'><div class='kicker'>Threshold sensitivity</div><b>Main question:</b> If I move the threshold, how does the operating point move, and how does the metric change?<br><br>This is about moving <b>along a curve</b> produced by one scoring classifier.</div>
+<div class='card'><div class='kicker'>Effective skew ratio</div><b>Main question:</b> At a fixed evaluation context, what trade-off between TPR and FPR keeps the metric constant?<br><br>This is the <b>slope of a metric isometric</b> in 2D ROC space.</div>
+<div class='card'><div class='kicker'>Skew sensitivity</div><b>Main question:</b> At a fixed ROC point, how much does the metric value change if class skew / prevalence / cost assumptions change?<br><br>This is well captured by a derivative such as \( \partial M/\partial c \).</div>
+</div>
+<div class='callout'><b>Very short distinction.</b><br>- <b>Threshold sensitivity</b>: move the <i>classifier threshold</i>.<br>- <b>Effective skew ratio</b>: look at the <i>shape of equal-metric lines</i> in ROC space.<br>- <b>Skew sensitivity</b>: change the <i>evaluation context</i> \(c\) or prevalence while keeping the ROC point fixed.</div>
+</section>
+
+<section id='flachsummary'><h2>2. Exam-style summary: the most important insights from Flach’s paper</h2>
+<div class='good callout'><b>Core message:</b> many ML metrics can be understood geometrically by studying their <b>isometrics</b> in ROC space. The key hidden variable is the <b>skew ratio</b>, which encodes class prevalence and/or cost emphasis.</div>
+<ol>
+<li><b>ROC space is not only for plotting classifiers.</b> Flach uses ROC space as a general tool to analyse metrics themselves.</li>
+<li><b>2D ROC is only one slice of a 3D story.</b> The third dimension is the skew ratio \(c\). Different values of \(c\) can change the meaning of a metric.</li>
+<li><b>Isometrics are contour lines of equal metric value.</b> They show where the metric takes the same value in ROC space.</li>
+<li><b>The most important characteristic of a metric is its effective skew landscape.</b> In practice: look at the <b>slope</b> of the isometric. That slope says what trade-off between TPR and FPR the metric rewards.</li>
+<li><b>Some metrics are skew-sensitive, some are weakly skew-insensitive, some fully skew-insensitive.</b> Accuracy depends directly on \(c\). Precision and WRAcc are <i>weakly</i> skew-insensitive. Fully skew-insensitive versions can be constructed, e.g. \(TPR-FPR\) for WRAcc-like behaviour.</li>
+<li><b>F-measure and G-measure are skew-equivalent.</b> They have the same effective skew ratio, so geometrically they encode the same local trade-off.</li>
+<li><b>F-measure is more positively biased than precision.</b> It gives even more emphasis to the positive class than precision does.</li>
+<li><b>Splitting criteria can also be analysed this way.</b> Gini-split is more skew-sensitive than information gain; DKM-split is weakly skew-insensitive.</li>
+<li><b>Big exam insight:</b> a metric is not just a formula. It encodes a hidden preference about which errors matter, and ROC isometrics let you see that preference geometrically.</li>
+</ol>
+<div class='warn callout'><b>Exam trap:</b> do not say “Flach just introduced another ROC curve.” What he really did was provide a <b>geometric theory of metrics</b>.</div>
+</section>
+
+<section id='slope'><h2>3. What exactly is the slope? What is the effective skew ratio?</h2>
+<h3>3.1 Start from an isometric</h3>
+<p>An isometric is a set of points \((FPR,TPR)\) where a metric has the same value. For example, for accuracy:</p>
+<p>\[ Accuracy=\frac{TPR+c(1-FPR)}{1+c} \]</p>
+<p>Fix the metric value to \(m\):</p>
+<p>\[ \frac{TPR+c(1-FPR)}{1+c}=m \]</p>
+<p>Now solve for \(TPR\):</p>
+<p>\[ TPR = m(1+c)-c(1-FPR) \]</p>
+<p>\[ TPR = \underbrace{m(1+c)-c}_{intercept} + \underbrace{c}_{slope}\cdot FPR \]</p>
+<div class='callout'>So the isometric is a straight line in ROC space, and its slope is \(c\). That slope is Flach’s <b>effective skew ratio</b> for accuracy.</div>
+<h3>3.2 Intuition</h3>
+<p>The slope tells you how much extra TPR you need to compensate for an increase in FPR if you want the metric value to stay the same.</p>
+<ul><li>If the slope is <b>large</b>, the metric tolerates an increase in FPR only if you gain a lot in TPR.</li><li>If the slope is <b>small</b>, the metric is more forgiving about FPR increases.</li></ul>
+<h3>3.3 Effective skew ratio as a local quantity</h3>
+<p>For some metrics, the isometrics are not all parallel. Then the slope depends on the point \((FPR,TPR)\). Flach calls this the <b>effective skew ratio</b> or effective skew landscape.</p>
+<table>
+<tr><th>Metric</th><th>Effective skew ratio</th><th>Interpretation</th></tr>
+<tr><td>Accuracy</td><td>\(c\)</td><td>Directly reflects expected skew / cost ratio.</td></tr>
+<tr><td>Precision</td><td>\(TPR/FPR\)</td><td>Local slope depends on where you are in ROC space.</td></tr>
+<tr><td>F-measure, G-measure</td><td>\( \frac{TPR}{FPR+1/c} \)</td><td>Also point-dependent; more biased toward positives.</td></tr>
+<tr><td>WRAcc</td><td>\(1\)</td><td>Parallel to the ascending diagonal.</td></tr>
+</table>
+<h3>3.4 How are these computed?</h3>
+<ol><li>Write the metric in ROC form using TPR, FPR, and \(c\).</li><li>Set the metric equal to a constant \(m\).</li><li>Rearrange to get the isometric equation.</li><li>Read off the slope if the line is linear; or compute the local derivative \(dTPR/dFPR\) if the isometric is nonlinear.</li></ol>
+<details><summary>Example: precision</summary>
+<p>\[ Precision=\frac{TPR}{TPR+cFPR}=m \]</p>
+<p>\[ TPR = m(TPR+cFPR) \]</p>
+<p>\[ TPR-mTPR = mcFPR \]</p>
+<p>\[ TPR(1-m)=mcFPR \]</p>
+<p>\[ TPR=\frac{mc}{1-m}FPR \]</p>
+<p>So for a fixed \(m\), the isometric is a line through the origin. Its slope is \(\frac{mc}{1-m}\). If you eliminate \(m\) using the point itself, you get the effective skew ratio \(TPR/FPR\).</p>
+</details>
+<details><summary>Example: F1</summary>
+<p>\[ F_1=\frac{2TPR}{TPR+cFPR+1}=m \]</p>
+<p>\[ 2TPR = m(TPR+cFPR+1) \]</p>
+<p>\[ TPR(2-m)=m(cFPR+1) \]</p>
+<p>\[ TPR = \frac{m(cFPR+1)}{2-m} \]</p>
+<p>The slope depends on \(m\), and if you re-express it locally at a point you get the effective skew ratio shown by Flach.</p>
+</details>
+</section>
+
+<section id='derivative'><h2>4. Derivative / skew sensitivity: what it is and how to summarise it</h2>
+<p>This is <b>your idea</b>. It is different from Flach’s slope, but it is very useful.</p>
+<div class='callout'><b>Definition.</b> Fix a ROC point \((FPR,TPR)\). Then look at how the metric value changes as \(c\) changes:
+\[ \frac{\partial M}{\partial c} \]
+This measures <b>skew sensitivity of the metric value</b>.</div>
+<table>
+<tr><th>Metric</th><th>ROC/skew form</th><th>\(\partial M/\partial c\)</th><th>Interpretation</th></tr>
+<tr><td>Accuracy</td><td>\(\frac{TPR+c(1-FPR)}{1+c}\)</td><td>\(\frac{(1-FPR)-TPR}{(1+c)^2}=\frac{TNR-TPR}{(1+c)^2}\)</td><td>Insensitive only when \(TPR=TNR\).</td></tr>
+<tr><td>Balanced accuracy</td><td>\(\frac{TPR+TNR}{2}\)</td><td>\(0\)</td><td>Prevalence-insensitive.</td></tr>
+<tr><td>Precision</td><td>\(\frac{TPR}{TPR+cFPR}\)</td><td>\(-\frac{TPR\cdot FPR}{(TPR+cFPR)^2}\)</td><td>Usually decreases as \(c\) grows.</td></tr>
+<tr><td>F1</td><td>\(\frac{2TPR}{TPR+cFPR+1}\)</td><td>\(-\frac{2TPR\cdot FPR}{(TPR+cFPR+1)^2}\)</td><td>Also skew-sensitive.</td></tr>
+</table>
+<h3>How can we summarise skew sensitivity in one number?</h3>
+<div class='flex'>
+<div class='card'><div class='kicker'>Option A</div><b>Average absolute sensitivity</b><br>\[S_{avg}(M)=\mathbb{{E}}\left[\left|\frac{{\partial M}}{{\partial c}}\right|\right]\]Average over a chosen region of interest in ROC space and a chosen range of \(c\).</div>
+<div class='card'><div class='kicker'>Option B</div><b>Worst-case sensitivity</b><br>\[S_{max}(M)=\sup \left|\frac{{\partial M}}{{\partial c}}\right|\]Useful if you care about robustness.</div>
+<div class='card'><div class='kicker'>Option C</div><b>Integrated sensitivity</b><br>\[S_{int}(M)=\int_{{c_{{min}}}}^{{c_{{max}}}}\left|\frac{{\partial M}}{{\partial c}}\right|dc\]For one fixed ROC point, this measures total change across a skew range.</div>
+</div>
+<div class='warn callout'><b>Exam answer suggestion:</b> “Flach’s effective skew ratio describes the geometry of isometrics in ROC space. A derivative such as \(\partial M/\partial c\) describes sensitivity of the metric value to skew assumptions. The latter is not in Flach’s original formulation, but it is a natural complementary analysis.”</div>
+</section>
+
+<section id='balancedacc'><h2>5. Balanced accuracy: more than “specificity + sensitivity”</h2>
+<p>\[ Balanced\ Accuracy = \frac{Sensitivity+Specificity}{2}=\frac{TPR+TNR}{2} \]</p>
+<ol><li><b>Average recall of the two classes.</b> You measure how well you recognise positives and negatives, then average them equally.</li><li><b>Accuracy under equal class importance.</b> It acts like ordinary accuracy after removing prevalence bias.</li><li><b>A prevalence-insensitive alternative to accuracy.</b> If one class is rare, normal accuracy can be misleading; balanced accuracy avoids this by giving the two classes equal weight.</li></ol>
+<div class='callout'>So yes, you can think of it as a <b>weighted accuracy</b> where the weights are chosen so that each class contributes equally, regardless of class size.</div>
+<p>But it is <b>not</b> the same as a general cost-sensitive accuracy. Cost-sensitive accuracy would use weights derived from the actual costs of FP and FN.</p>
+</section>
+
+<section id='skewcost'><h2>6. Skew and cost considerations from the slide</h2>
+<p>Imbalance and cost are different:</p>
+<ul><li><b>Imbalance</b> says how frequent the classes are.</li><li><b>Cost</b> says how bad each error type is.</li></ul>
+<p>The slide suggests weighting class-conditional performance with ratios like \(P/N\) or \(N/P\), or directly weighting off-diagonal confusion matrix entries by misclassification costs:</p>
+<p>\[ Cost = C_{{FN}}\cdot FN + C_{{FP}}\cdot FP \]</p>
+<div class='callout'>Important idea: sometimes rare classes deserve more weight because they are rare; sometimes they deserve more weight because the errors are more costly; sometimes both; sometimes neither. Do not mix these up.</div>
+</section>
+
+<section id='fpref'><h2>7. F\(_\alpha\), F\(_\beta\), F1, and G-mean</h2>
+<p>F-scores combine precision and recall. The standard family is</p>
+<p>\[ F_\beta = \frac{(1+\beta^2)PR}{\beta^2P+R} \]</p>
+<p>where \(P=Precision\), \(R=Recall\).</p>
+<ul><li>\(\beta=1\): \(F_1\), equal emphasis on precision and recall.</li><li>\(\beta>1\): recall is more important.</li><li>\(\beta<1\): precision is more important.</li></ul>
+<div class='good callout'>So: <b>F1</b> = symmetric compromise, <b>F2</b> = recall-oriented, <b>F0.5</b> = precision-oriented.</div>
+<p>Some slides write \(F_\alpha\) instead of \(F_\beta\), but the conceptual role is the same: tune the trade-off.</p>
+<p>G-mean is often \(\sqrt{TPR\cdot TNR}\) or sometimes \(\sqrt{TPR\cdot Precision}\). It penalizes imbalance strongly because it is multiplicative.</p>
+</section>
+
+<section id='multiclass'><h2>8. Why does the slide call accuracy “multi-class focus”?</h2>
+<p>It means accuracy is a more <b>global</b> measure that looks at all classes together. Precision, recall, specificity and related measures are usually introduced with a <b>one-class focal view</b>.</p>
+<div class='flex'><div class='card'><div class='kicker'>Multi-class / global focus</div>Accuracy uses all correct decisions together. In multiclass form:
+\[ Accuracy=\frac{\sum_i TP_i}{N} \]
+</div><div class='card'><div class='kicker'>Single-class focus</div>To compute precision/recall in multiclass problems, take each class in turn as “positive” and the rest as “negative”, then aggregate.</div></div>
+<p>Aggregations:</p>
+<ul><li><b>Macro</b>: average across classes equally.</li><li><b>Weighted macro</b>: average weighted by support.</li><li><b>Micro</b>: pool TP, FP, FN over all classes first.</li></ul>
+<div class='warn callout'><b>Exam trap:</b> in single-label multiclass classification, micro-precision = micro-recall = micro-F1 = accuracy.</div>
+</section>
+
+<section id='aucslides'><h2>9. AUC and ROC slides explained more clearly</h2>
+<p>ROC is for a <b>scoring classifier</b>. As you vary the threshold, you get different \((FPR,TPR)\) pairs. Plotting them gives the ROC curve.</p>
+<div class='callout'>AUC has two famous interpretations:
+<ol><li><b>Average ranking performance</b> over thresholds / operating points.</li><li><b>Probability interpretation</b>: the probability that a randomly chosen positive gets a higher score than a randomly chosen negative.</li></ol></div>
+<p>AUC is often more robust than accuracy under imbalance because a trivial majority-class classifier can have high accuracy but no useful ranking skill.</p>
+<p>But ROC itself ignores prevalence. Many real performance measures depend on prevalence or cost. That is why Flach recommends plotting <b>isometrics</b> of the performance measure of interest on top of ROC space.</p>
+</section>
+
+<section id='othermeasures'><h2>10. Short explanations of smROC, H-measure, Information score, and Efficiency Method</h2>
+<p><b>smROC</b>: smoothed / stabilized ROC-style analysis; useful when the empirical ROC curve is jagged and you want a cleaner geometric picture.</p>
+<p><b>H-measure</b>: a scalar alternative to AUC that fixes a problem-level cost distribution first, so classifier comparison is cost-coherent.</p>
+<p><b>Information score</b>: a family of measures for probabilistic classifiers. Compare what you believed <i>before</i> prediction (the <b>prior</b>) with what the classifier says <i>after</i> seeing the features (the <b>posterior</b>). Good models reduce uncertainty and assign high probability to the true class.</p>
+<p><b>Efficiency Method</b>: multi-criteria evaluation. Instead of forcing everything into one scalar, compare models on several axes such as accuracy, comprehensibility, interestingness, or cost.</p>
+</section>
+
+<section id='agreement'><h2>11. Short explanation: multi-rater / multi-class agreement</h2>
+<p>These measures are used when there is <b>no perfect ground truth</b> and labels come from human raters.</p>
+<ul><li><b>Fleiss’ kappa</b>: generalizes Cohen’s kappa to multiple raters.</li><li><b>Scott’s pi</b>: another chance-corrected agreement coefficient.</li><li><b>ICC</b>: intraclass correlation, often for quantitative ratings.</li><li><b>κS / S measure</b>: proposals to better handle fixed-rater settings.</li></ul>
+<div class='callout'>Big picture: when labels come from experts rather than unquestioned ground truth, we may want to know how much agreement exists beyond chance.</div>
+</section>
+
+<section id='visual'><h2>12. What are visualization-based measures and chance-corrected evaluation about?</h2>
+<p>Visualization-based approaches treat classifier evaluation data as high-dimensional data. Accuracy or F1 are just one projection. Other projections can reveal structure, clusters, or error geometry.</p>
+<p>Chance-corrected measures are useful when labels are noisy, biased, or imprecise. Raw accuracy may overstate performance because some agreement would occur by chance anyway.</p>
+</section>
+
+<section id='next'><h2>What to study for the exam</h2>
+<ol><li>Explain the difference between ROC curve, AUC, and ROC isometrics.</li><li>Know how to derive a ROC-form metric and read off the isometric slope.</li><li>Know what <b>effective skew ratio</b> means and why it is central in Flach’s paper.</li><li>Know why balanced accuracy is prevalence-insensitive.</li><li>Know how F\(_\beta\) changes the precision-recall trade-off.</li><li>Know how to compute precision / recall / F1 in multiclass settings.</li><li>Know the main criticism of AUC and what the H-measure tries to fix.</li><li>Know when chance-corrected agreement measures are needed.</li></ol>
+<div class='good callout'>If you want, a next natural step would be a live HTML page that compares <b>effective skew ratio</b> and <b>\(\partial M/\partial c\)</b> with sliders.</div>
+</section>
+</div></main></body></html>

@@ -1,0 +1,57 @@
+<!doctype html><html><head><meta charset="utf-8"><title>ROC Isometric Explorer Pro</title>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<script>window.MathJax={tex:{inlineMath:[['\\(','\\)'],['$','$']]}};</script>
+<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<style>
+body{font-family:Arial;margin:0;background:#f6f7fb;color:#222}header{background:#1f2937;color:#fff;padding:18px 24px}
+main{display:grid;grid-template-columns:360px 1fr;gap:16px;padding:16px}.card{background:#fff;border-radius:12px;padding:14px;box-shadow:0 1px 6px #0002}
+label{display:block;margin-top:10px;font-weight:700}.small{font-size:13px;color:#555;line-height:1.4}.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+#plot3d,#plot2d{height:680px}.metric-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}.metric-grid label{font-weight:500;margin:0}
+.value{font-family:monospace;background:#eef2f7;padding:2px 6px;border-radius:5px}.eq{background:#eef2f7;border-radius:8px;padding:10px;margin-top:10px;line-height:1.5}
+</style></head><body>
+<header><h2>ROC Isometric Explorer Pro</h2><div class="small" style="color:#d1d5db">Multiple metrics, 3D/2D/both layouts, and preserved camera when changing the slice.</div></header>
+<main><section class="card">
+<label>Metrics to display</label>
+<div class="metric-grid" id="metricChecks">
+<label><input type="checkbox" value="accuracy" checked> Accuracy</label>
+<label><input type="checkbox" value="precision"> Precision / PPV</label>
+<label><input type="checkbox" value="f1"> F1</label>
+<label><input type="checkbox" value="balanced_accuracy"> Balanced accuracy</label>
+<label><input type="checkbox" value="recall"> Recall / TPR</label>
+<label><input type="checkbox" value="specificity"> Specificity / TNR</label>
+<label><input type="checkbox" value="gmeasure"> G-measure</label>
+<label><input type="checkbox" value="npv"> NPV</label>
+<label><input type="checkbox" value="fallout"> Fallout / FPR</label>
+<label><input type="checkbox" value="youden"> Youden J</label>
+<label><input type="checkbox" value="wracc"> WRAcc</label>
+</div>
+<div class="row"><div><label>View layout</label><select id="viewMode"><option value="both">3D + 2D</option><option value="3d">3D only</option><option value="2d">2D only</option></select></div>
+<div><label>Third axis</label><select id="axisMode"><option value="c">Skew ratio c = NEG/POS</option><option value="pos" selected>Positive prevalence pos = POS/N</option></select></div></div>
+<label>Fixed metric value \(m\): <span id="mVal" class="value"></span></label><input id="m" type="range" min="-0.95" max="0.95" step="0.01" value="0.80">
+<div class="row"><div><label>Selected slice: <span id="sliceVal" class="value"></span></label><input id="slice" type="range" min="0.1" max="10" step="0.1" value="1.0"></div>
+<div><label>Maximum displayed \(c\)</label><select id="cmax"><option value="5">5</option><option value="10" selected>10</option><option value="20">20</option></select></div></div>
+<div class="eq" id="formulaBox"></div>
+<p class="small">Each surface is an equal-metric-value set. The plane fixes one operating condition. The line on the plane is the corresponding 2D ROC isometric.</p>
+</section>
+<section class="card"><div id="plotsWrap" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;"><div id="leftWrap"><div id="plot3d"></div></div><div id="rightWrap"><div id="plot2d"></div></div></div></section></main>
+<script>
+const COLORS={accuracy:'#2563eb',precision:'#dc2626',f1:'#16a34a',balanced_accuracy:'#7c3aed',recall:'#ea580c',specificity:'#0f766e',gmeasure:'#e11d48',npv:'#4b5563',fallout:'#a16207',youden:'#0891b2',wracc:'#be185d'};
+const NAMES={accuracy:'Accuracy',precision:'Precision / PPV',f1:'F1',balanced_accuracy:'Balanced accuracy',recall:'Recall / TPR',specificity:'Specificity / TNR',gmeasure:'G-measure',npv:'NPV',fallout:'Fallout / FPR',youden:'Youden J',wracc:'WRAcc'};
+const FORMULAS={accuracy:'\\(Accuracy=\\dfrac{TPR+c(1-FPR)}{1+c}\\)',precision:'\\(Precision=\\dfrac{TPR}{TPR+cFPR}\\)',f1:'\\(F_1=\\dfrac{2TPR}{TPR+cFPR+1}\\)',balanced_accuracy:'\\(BA=\\dfrac{TPR+1-FPR}{2}\\)',recall:'\\(Recall=TPR\\)',specificity:'\\(Specificity=1-FPR\\)',gmeasure:'\\(G=\\dfrac{TPR}{cFPR+1}\\)',npv:'\\(NPV=\\dfrac{c(1-FPR)}{c(1-FPR)+(1-TPR)}\\)',fallout:'\\(Fallout=FPR\\)',youden:'\\(J=TPR-FPR\\)',wracc:'\\(WRAcc=\\dfrac{4c}{(1+c)^2}(TPR-FPR)\\)'};
+const SLOPES={accuracy:'\\(s_{eff}=c\\)',precision:'\\(s_{eff}=TPR/FPR\\)',f1:'\\(s_{eff}=\\dfrac{c\,TPR}{cFPR+1}=\\dfrac{TPR}{FPR+1/c}\\)',balanced_accuracy:'\\(s_{eff}=1\\)',recall:'\\(s_{eff}=0\\)',specificity:'vertical isometric (infinite slope)',gmeasure:'\\(s_{eff}=\\dfrac{c\,TPR}{cFPR+1}=\\dfrac{TPR}{FPR+1/c}\\)',npv:'local slope: \\( -M_{FPR}/M_{TPR}\\)',fallout:'vertical isometric (infinite slope)',youden:'\\(s_{eff}=1\\)',wracc:'\\(s_{eff}=1\\)'};
+const FPRS=Array.from({length:81},(_,i)=>i/80), uirev="keep-camera";
+const posToC=p=>(1-p)/p, cToPos=c=>1/(1+c);
+function solve(metric,m,fpr,c){if(metric==="accuracy")return m*(1+c)-c*(1-fpr);if(metric==="precision")return m>=.999?NaN:(m*c*fpr)/(1-m);if(metric==="f1")return m*(c*fpr+1)/(2-m);if(metric==="balanced_accuracy")return 2*m-1+fpr;if(metric==="recall")return m;if(metric==="gmeasure")return m*(c*fpr+1);if(metric==="npv")return (m<=0||m>=1)?NaN:1-c*(1-fpr)*(1-m)/m;if(metric==="youden")return m+fpr;if(metric==="wracc")return fpr+m*(1+c)*(1+c)/(4*c);return NaN}
+function vx(metric,m){if(metric==="specificity")return 1-m;if(metric==="fallout")return m;return null}
+function selectedMetrics(){return [...document.querySelectorAll('#metricChecks input:checked')].map(x=>x.value)}
+function configureSlice(){if(axisMode.value==="c"){slice.min=.1;slice.max=+cmax.value;slice.step=.1;slice.value=Math.min(Math.max(+slice.value||1,.1),+cmax.value)}else{slice.min=.02;slice.max=.98;slice.step=.01;if(!(+slice.value>=.02&&+slice.value<=.98))slice.value=.5}}
+function surface(metric,m,mode,cmax){const vals=mode==="c"?Array.from({length:51},(_,i)=>.1+i*(cmax-.1)/50):Array.from({length:51},(_,i)=>.02+i*.96/50);const X=[],Y=[],Z=[];const xv=vx(metric,m);for(const a of vals){const c=mode==="c"?a:posToC(a),xr=[],yr=[],zr=[];if(xv!==null){for(let i=0;i<=80;i++){xr.push(xv);yr.push(i/80);zr.push(a)}}else{for(const f of FPRS){const t=solve(metric,m,f,c);xr.push(f);yr.push(Number.isFinite(t)&&t>=0&&t<=1?t:null);zr.push(a)}}X.push(xr);Y.push(yr);Z.push(zr)}return{X,Y,Z}}
+function curve(metric,m,mode,a){const c=mode==="c"?a:posToC(a),xs=[],ys=[],zs=[];const xv=vx(metric,m);if(xv!==null){for(let i=0;i<=80;i++){xs.push(xv);ys.push(i/80);zs.push(a)}}else{for(const f of FPRS){const t=solve(metric,m,f,c);if(Number.isFinite(t)&&t>=0&&t<=1){xs.push(f);ys.push(t);zs.push(a)}}}return{xs,ys,zs}}
+function render(){const metrics=selectedMetrics(),m=+document.getElementById('m').value,mode=axisMode.value,a=+slice.value,cmaxv=+cmax.value;mVal.textContent=m.toFixed(2);sliceVal.textContent=mode==="c"?`c=${a.toFixed(2)}, pos=${cToPos(a).toFixed(3)}`:`pos=${a.toFixed(2)}, c=${posToC(a).toFixed(2)}`;formulaBox.innerHTML=metrics.length?metrics.map(k=>`<div style="color:${COLORS[k]};margin-bottom:7px"><b>${NAMES[k]}</b>: ${FORMULAS[k]}<br><span style="color:#334155"><b>Effective skew slope:</b> ${SLOPES[k]}</span></div>`).join(''):'Select at least one metric.';if(window.MathJax)MathJax.typesetPromise();
+const t3=[];metrics.forEach(metric=>{const s=surface(metric,m,mode,cmaxv);t3.push({type:'surface',x:s.X,y:s.Y,z:s.Z,opacity:.38,showscale:false,surfacecolor:s.Z.map(r=>r.map(_=>1)),colorscale:[[0,COLORS[metric]],[1,COLORS[metric]]],name:NAMES[metric]})});t3.push({type:'surface',x:[[0,1],[0,1]],y:[[0,0],[1,1]],z:[[a,a],[a,a]],opacity:.18,showscale:false,hoverinfo:'skip',colorscale:[[0,'#111827'],[1,'#111827']],name:'selected slice'});metrics.forEach(metric=>{const q=curve(metric,m,mode,a);t3.push({type:'scatter3d',mode:'lines',x:q.xs,y:q.ys,z:q.zs,line:{width:7,color:COLORS[metric]},showlegend:false,name:`${NAMES[metric]} intersection`})});
+Plotly.react('plot3d',t3,{margin:{l:0,r:0,b:0,t:20},uirevision:uirev,scene:{uirevision:uirev,xaxis:{title:'FPR',range:[0,1]},yaxis:{title:'TPR',range:[0,1]},zaxis:{title:mode==='c'?'c = NEG/POS':'positive prevalence pos',range:mode==='c'?[0,cmaxv]:[0,1]}},legend:{orientation:'h'}},{responsive:true});
+const t2=metrics.map(metric=>{const q=curve(metric,m,mode,a);return{type:'scatter',mode:'lines',x:q.xs,y:q.ys,line:{width:4,color:COLORS[metric]},name:NAMES[metric]}});t2.push({type:'scatter',mode:'lines',x:[0,1],y:[0,1],line:{dash:'dash',color:'#9ca3af'},name:'random diagonal'});
+Plotly.react('plot2d',t2,{margin:{l:60,r:20,b:55,t:20},uirevision:'keep-2d',xaxis:{title:'FPR',range:[0,1]},yaxis:{title:'TPR',range:[0,1]},legend:{orientation:'h'}},{responsive:true});
+if(viewMode.value==='both'){plotsWrap.style.gridTemplateColumns='1fr 1fr';leftWrap.style.display='block';rightWrap.style.display='block'}if(viewMode.value==='3d'){plotsWrap.style.gridTemplateColumns='1fr';leftWrap.style.display='block';rightWrap.style.display='none'}if(viewMode.value==='2d'){plotsWrap.style.gridTemplateColumns='1fr';leftWrap.style.display='none';rightWrap.style.display='block'}}
+document.querySelectorAll('#metricChecks input').forEach(x=>x.addEventListener('change',render));viewMode.addEventListener('change',render);axisMode.addEventListener('change',()=>{configureSlice();render()});cmax.addEventListener('input',()=>{configureSlice();render()});m.addEventListener('input',render);slice.addEventListener('input',render);axisMode.value='pos';configureSlice();render();
+</script></body></html>

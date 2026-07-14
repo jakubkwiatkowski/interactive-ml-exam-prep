@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>ML Model Evaluation — Performance Measures Exam Guide</title>
+<script>window.MathJax={tex:{inlineMath:[['\\(','\\)'],['$','$']]}};</script>
+<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<style>
+body{font-family:Arial;margin:0;background:#f6f7fb;color:#222}
+header{background:#1f2937;color:white;padding:20px 26px;position:sticky;top:0;z-index:5}
+main{display:grid;grid-template-columns:270px 1fr;gap:16px;padding:16px}
+nav,.card{background:#fff;border-radius:12px;padding:15px;box-shadow:0 1px 6px #0002}
+nav{position:sticky;top:92px;height:calc(100vh - 125px);overflow:auto}
+nav button{display:block;width:100%;text-align:left;border:0;background:transparent;padding:8px;border-radius:7px;cursor:pointer}
+nav button:hover,nav button.active{background:#e0e7ff}
+section{display:none}.show{display:block}
+.box{background:#f8fafc;border:1px solid #e5e7eb;border-radius:10px;padding:12px;margin:10px 0}
+.good{border-left:4px solid #16a34a}.warn{border-left:4px solid #ea580c}.exam{border-left:4px solid #4f46e5}
+table{border-collapse:collapse;width:100%;margin:10px 0}th,td{border:1px solid #cbd5e1;padding:8px;vertical-align:top}th{background:#eef2f7}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}.small{font-size:13px;color:#555;line-height:1.45}
+details{background:#f8fafc;border-radius:8px;padding:9px;margin:8px 0}summary{cursor:pointer;font-weight:bold}
+.quiz button{margin:5px;padding:7px 10px}.answer{display:none;background:#ecfdf5;padding:9px;border-radius:8px;margin-top:8px}
+@media(max-width:900px){main{grid-template-columns:1fr}nav{position:static;height:auto}}
+</style>
+</head>
+<body>
+<header><h2 style="margin:0">Performance Measures — Exam Guide</h2>
+<div class="small" style="color:#d1d5db">Based mainly on the ICML tutorial and Flach’s ROC-isometric paper. Your derivative-with-respect-to-\(c\) idea is intentionally excluded from the exam core.</div></header>
+<main>
+<nav id="nav">
+<button data-id="map" class="active">1. Big picture</button>
+<button data-id="derive">2. Derivation toolkit</button>
+<button data-id="cm">3. Confusion matrix</button>
+<button data-id="compare">4. Comparing core metrics</button>
+<button data-id="imbalance">5. Imbalance and costs</button>
+<button data-id="scores">6. Scores, thresholds, ROC</button>
+<button data-id="auc">7. AUC and ranking</button>
+<button data-id="prdetlift">8. PR, DET, Lift, Cost</button>
+<button data-id="flach">9. Flach: isometrics and skew</button>
+<button data-id="prob">10. Probabilistic metrics</button>
+<button data-id="agreement">11. Agreement and other measures</button>
+<button data-id="traps">12. Exam traps</button>
+<button data-id="questions">13. Exam questions</button>
+</nav>
+<div class="card">
+
+<section id="map" class="show">
+<h2>1. The evaluation map</h2>
+<div class="box exam"><b>Main principle:</b> a metric is chosen from the evaluation question, not independently of it.</div>
+<table>
+<tr><th>Output available</th><th>Main question</th><th>Typical measures</th></tr>
+<tr><td>Hard labels at one threshold</td><td>How good are the final decisions?</td><td>Accuracy, precision, recall, specificity, F1, balanced accuracy, MCC</td></tr>
+<tr><td>Scores across thresholds</td><td>How good is ranking and threshold trade-off?</td><td>ROC, AUC, PR, DET, lift, cost curves</td></tr>
+<tr><td>Probabilities</td><td>Are numerical probabilities accurate and reliable?</td><td>Brier/RMSE, log-loss, calibration, information measures</td></tr>
+<tr><td>Imperfect human labels</td><td>How much agreement exists beyond chance?</td><td>Cohen’s kappa, Fleiss’ kappa, ICC</td></tr>
+</table>
+<div class="box warn">Different metrics may rank the same classifiers differently because every metric reveals some information and hides other information.</div>
+</section>
+
+
+<section id="derive">
+<h2>2. Derivation toolkit: remember a few bases, derive the rest</h2>
+<div class="box exam"><b>Exam strategy:</b> do not memorize every transformed formula. Memorize the confusion-matrix definitions and the change-of-variables identities, then derive ROC/skew forms.</div>
+<h3>Base identities</h3>
+<p>\[
+TP=POS\cdot TPR,\qquad FN=POS(1-TPR)
+\]</p>
+<p>\[
+FP=NEG\cdot FPR,\qquad TN=NEG(1-FPR)
+\]</p>
+<p>\[
+pos=\frac{POS}{POS+NEG},\qquad c=\frac{NEG}{POS}=\frac{1-pos}{pos},\qquad pos=\frac1{1+c}
+\]</p>
+<h3>Example: derive accuracy in ROC/prevalence/skew form</h3>
+<p>Start with:</p>
+<p>\[
+Accuracy=\frac{TP+TN}{POS+NEG}
+\]</p>
+<p>Substitute \(TP=POS\,TPR\) and \(TN=NEG(1-FPR)\):</p>
+<p>\[
+Accuracy=\frac{POS\,TPR+NEG(1-FPR)}{POS+NEG}
+\]</p>
+<p>Divide by the total to obtain prevalence form:</p>
+<p>\[
+Accuracy=pos\,TPR+(1-pos)(1-FPR)
+\]</p>
+<p>Or divide numerator and denominator by POS and use \(c=NEG/POS\):</p>
+<p>\[
+Accuracy=\frac{TPR+c(1-FPR)}{1+c}
+\]</p>
+<div class="box good">You only need the standard accuracy formula plus the four substitutions. The 3D formula does not need to be memorized separately.</div>
+<h3>Means as memory devices</h3>
+<table><tr><th>Mean</th><th>Formula</th><th>Why used</th></tr>
+<tr><td>Arithmetic</td><td>\((a+b)/2\)</td><td>Equal additive contribution; balanced accuracy averages two class recalls.</td></tr>
+<tr><td>Geometric</td><td>\(\sqrt{ab}\)</td><td>Multiplicative balance; becomes zero if either component is zero; G-mean.</td></tr>
+<tr><td>Harmonic</td><td>\(2ab/(a+b)\)</td><td>Strongly controlled by the smaller component; F1 combines precision and recall.</td></tr></table>
+<h3>Dice gives F1</h3>
+<p>\[
+Dice=\frac{2|A\cap B|}{|A|+|B|}
+\]</p>
+<p>For predicted-positive set \(A\) and true-positive set \(B\):</p>
+<p>\[
+|A\cap B|=TP,\quad |A|=TP+FP,\quad |B|=TP+FN
+\]</p>
+<p>Therefore:</p>
+<p>\[
+Dice=\frac{2TP}{2TP+FP+FN}=F_1
+\]</p>
+</section>
+
+<section id="cm">
+<h2>2. Confusion matrix</h2>
+<table>
+<tr><th>Predicted \ True</th><th>Positive</th><th>Negative</th></tr>
+<tr><th>Positive</th><td>TP</td><td>FP</td></tr>
+<tr><th>Negative</th><td>FN</td><td>TN</td></tr>
+</table>
+<p>\[
+P=TP+FN,\qquad N=FP+TN
+\]</p>
+<table>
+<tr><th>Measure</th><th>Formula</th><th>Question answered</th></tr>
+<tr><td>Accuracy</td><td>\(\frac{TP+TN}{P+N}\)</td><td>What fraction of all cases is correct?</td></tr>
+<tr><td>Precision</td><td>\(\frac{TP}{TP+FP}\)</td><td>How trustworthy are positive predictions?</td></tr>
+<tr><td>Recall / sensitivity / TPR</td><td>\(\frac{TP}{TP+FN}\)</td><td>How many real positives were found?</td></tr>
+<tr><td>Specificity / TNR</td><td>\(\frac{TN}{TN+FP}\)</td><td>How many real negatives were correctly rejected?</td></tr>
+<tr><td>FPR / fallout</td><td>\(\frac{FP}{FP+TN}\)</td><td>How often do negatives produce false alarms?</td></tr>
+<tr><td>FNR / miss rate</td><td>\(\frac{FN}{TP+FN}\)</td><td>How often are positives missed?</td></tr>
+</table>
+</section>
+
+
+<section id="compare">
+<h2>4. Core metrics: meaning, derivation, and comparison</h2>
+<details open><summary>Accuracy</summary><p>Correct predictions divided by all predictions. It is a prevalence-weighted average of TPR and TNR:</p><p>\[Accuracy=pos\,TPR+(1-pos)TNR\]</p><p>Therefore the majority class has more influence when prevalence is imbalanced.</p></details>
+<details open><summary>Precision versus recall</summary><p>Precision conditions on the <b>predicted-positive set</b>; recall conditions on the <b>true-positive set</b>.</p><p>\[Precision=\frac{TP}{TP+FP},\qquad Recall=\frac{TP}{TP+FN}\]</p><p>Precision asks whether alarms are trustworthy. Recall asks whether positives were found.</p></details>
+<details open><summary>F1 and F-beta</summary><p>\[F_1=\frac{2PR}{P+R}=\frac{2TP}{2TP+FP+FN}\]</p><p>The harmonic mean is used because a high value requires both components to be high. For \(P=1,R=0.1\), arithmetic mean is 0.55, geometric mean about 0.316, and harmonic mean about 0.182.</p><p>\[F_\beta=\frac{(1+\beta^2)PR}{\beta^2P+R}\]</p><p>\(\beta>1\) emphasizes recall; \(\beta<1\) emphasizes precision.</p></details>
+<details open><summary>Balanced accuracy and G-mean</summary><p>\[BA=\frac{TPR+TNR}{2},\qquad G=\sqrt{TPR\cdot TNR}\]</p><p>Both are prevalence-insensitive class-balance measures. BA uses an arithmetic mean; G penalizes uneven performance more strongly because multiplication collapses when either recall is poor.</p></details>
+<details open><summary>WRAcc</summary><p>Weighted relative accuracy is used in subgroup discovery:</p><p>\[WRAcc=\frac{4c}{(1+c)^2}(TPR-FPR)\]</p><p>Intuitively it rewards a subgroup whose positive rate is above the population rate, while also rewarding subgroup coverage. The factor depending on \(c\) rescales the value; the geometric core is \(TPR-FPR\), so isometrics have slope 1.</p></details>
+<div class="box exam"><b>Tutorial insight:</b> each metric conveys some information and hides other information, so classifiers may be ranked differently depending on the chosen measure.</div>
+</section>
+
+
+<section id="imbalance">
+<h2>5. Class imbalance and asymmetric costs</h2>
+<p>Class frequency and error cost are distinct:</p>
+<ul><li><b>Prevalence:</b> how often positives and negatives occur.</li><li><b>Cost:</b> how serious FP and FN are.</li></ul>
+<p>Expected cost at one threshold:</p>
+<p>\[
+EC=P(+)C_{FN}FNR+P(-)C_{FP}FPR
+\]</p>
+<div class="box good">Balanced accuracy:
+\[
+BA=\frac{TPR+TNR}{2}
+\]
+It is ordinary classwise recall averaged with equal class weight.</div>
+<div class="box warn">Balanced accuracy removes prevalence weighting; it does not automatically encode arbitrary application costs.</div><h3>Threshold optimization</h3><p>For every distinct score threshold compute:</p><p>\[EC(t)=P(+)C_{FN}FNR(t)+P(-)C_{FP}FPR(t)\]</p><p>Choose:</p><p>\[t^*=\arg\min_t EC(t)\]</p><p>For a finite empirical ROC curve, the reliable algorithm is a sorted threshold sweep, not calculus. The curve is a staircase and may have corners or ties. A derivative/tangency condition is a geometric characterization for a smooth population ROC, not the normal empirical algorithm.</p>
+</section>
+
+<section id="scores">
+<h2>5. Scores, thresholds, and ROC</h2>
+<p>A scoring classifier outputs a score. A threshold converts it to a class label.</p>
+<p>Every threshold gives one point:</p>
+<p>\[
+(FPR(t),TPR(t))
+\]</p>
+<p>Connecting threshold points gives the ROC curve.</p>
+<div class="box exam"><b>Interpret ROC as a menu:</b> every point is one decision policy, with one hit rate and one false-alarm rate.</div>
+<p>The curve can be constructed efficiently by sorting scores once and sweeping through distinct score values. Complexity is mainly \(O(n\log n)\) for sorting, then \(O(n)\) for the sweep.</p>
+</section>
+
+<section id="auc">
+<h2>6. AUC and ranking</h2>
+<p>The safest interpretation:</p>
+<p>\[
+AUC=P(s(X^+)>s(X^-))
+\]</p>
+<p>AUC is the probability that a randomly selected positive receives a higher score than a randomly selected negative, with half-credit for ties.</p>
+<p>Rank-sum form:</p>
+<p>\[
+AUC=
+\frac{
+\sum_{i\in +}R_i-\frac{n_+(n_++1)}2
+}{
+n_+n_-
+}
+\]</p>
+<div class="box">
+The subtraction removes the minimum rank sum the positives would have if they occupied the lowest \(n_+\) ranks. What remains counts correctly ordered positive-negative pairs.
+</div>
+<p>Trapezoidal form:</p>
+<p>\[
+AUC=\sum_i(FPR_{i+1}-FPR_i)\frac{TPR_i+TPR_{i+1}}2
+\]</p>
+<div class="box warn">AUC evaluates ranking, not calibration, and may hide poor performance in the specific operating region that matters.</div>
+</section>
+
+<section id="prdetlift">
+<h2>7. Other graphical methods</h2>
+<table>
+<tr><th>Curve</th><th>Axes</th><th>Best intuition</th></tr>
+<tr><td>PR</td><td>Recall vs precision</td><td>How much of the positive class is found, and how trustworthy retrieved positives are.</td></tr>
+<tr><td>DET</td><td>FPR vs FNR</td><td>Error versus error; useful in low-error regions and often shown with probit axes.</td></tr>
+<tr><td>Lift</td><td>Top-ranked fraction vs enrichment</td><td>How productive top-\(k\) action is compared with random selection.</td></tr>
+<tr><td>Cost curve</td><td>Operating condition vs normalized cost</td><td>Which threshold or classifier is cheapest for each prevalence/cost condition.</td></tr>
+</table>
+<div class="box exam"><b>PR is not a reflected ROC.</b> Precision includes FP in the predicted-positive set and therefore exposes workload under rare positives.</div>
+</section>
+
+
+<section id="flach">
+<h2>9. Flach: derive and interpret ROC isometrics</h2>
+<h3>Expected skew and 3D coordinates</h3>
+<p>\[c=\frac{NEG}{POS}=\frac{1-pos}{pos},\qquad pos=\frac1{1+c}\]</p>
+<p>The three coordinates are FPR, TPR, and an operating-context coordinate such as \(c\) or \(pos\). Fixing \(c\) gives one ordinary 2D ROC slice.</p>
+<h3>Isometric and effective skew</h3>
+<p>An isometric is an equal-metric contour:</p><p>\[M(FPR,TPR;c)=m\]</p>
+<p>Along it, the metric remains constant:</p><p>\[dM=M_{FPR}\,dFPR+M_{TPR}\,dTPR=0\]</p>
+<p>Hence:</p><p>\[s_{eff}=\frac{dTPR}{dFPR}=-\frac{M_{FPR}}{M_{TPR}}\]</p>
+<p>This slope is the TPR increase required to compensate for a small FPR increase while preserving the metric value.</p>
+<h3>Accuracy derivation</h3>
+<p>\[\frac{TPR+c(1-FPR)}{1+c}=m\]</p>
+<p>Rearrange:</p><p>\[TPR=m(1+c)-c+cFPR\]</p>
+<p>The isometric is linear with slope:</p><p>\[s_{eff}=c\]</p>
+<h3>Precision derivation</h3>
+<p>\[\frac{TPR}{TPR+cFPR}=m\]</p>
+<p>\[TPR=\frac{mc}{1-m}FPR\]</p>
+<p>The line passes through the origin, so its slope is also \(TPR/FPR\):</p><p>\[s_{eff}=\frac{TPR}{FPR}\]</p>
+<h3>F1 and Flach’s G-measure</h3>
+<p>\[F_1=\frac{2TPR}{TPR+cFPR+1},\qquad G_F=\frac{TPR}{cFPR+1}\]</p>
+<p>They are related by the strictly increasing transformation:</p><p>\[F_1=\frac{2G_F}{1+G_F}\]</p>
+<p>Therefore they rank ROC points identically and have the same isometric geometry: they are skew-equivalent.</p>
+<h3>Weak versus strong skew-insensitivity</h3>
+<p><b>Strong:</b> changing \(c\) changes neither values nor ordering; example \(TPR-FPR\).</p>
+<p><b>Weak:</b> values may be positively rescaled but ordering/isometric preference is preserved; example WRAcc.</p>
+<h3>Paper insights to remember</h3>
+<ul><li>Accuracy has parallel isometrics with constant effective skew \(c\).</li><li>Precision has rays through the origin and varying effective skew over ROC space.</li><li>F1 and G-measure have the same isometrics but different numerical scales.</li><li>WRAcc isometrically behaves like the skew-insensitive core \(TPR-FPR\).</li><li>Nonlinear decision-tree criteria can have curved isometrics and point-dependent local slopes.</li></ul>
+</section>
+
+
+<section id="prob">
+<h2>9. Probabilistic and information-theoretic metrics</h2>
+
+<h3>Log-loss and cross-entropy</h3>
+<p>For binary classification:</p>
+<p>\[
+LL=-\frac1n\sum_{i=1}^n\left[y_i\log p_i+(1-y_i)\log(1-p_i)\right].
+\]</p>
+<p>This is empirical binary cross-entropy. In multiclass classification:</p>
+<p>\[
+CE=-\frac1n\sum_i\sum_k y_{ik}\log p_{ik}
+=-\frac1n\sum_i\log p_{i,\text{true class}}.
+\]</p>
+<div class="box exam"><b>Exam identity:</b> in standard supervised classification, log-loss and cross-entropy loss are the same quantity.</div>
+
+<h3>Brier score</h3>
+<p>\[
+BS=\frac1n\sum_i(p_i-y_i)^2.
+\]</p>
+<p>For binary \(y_i\in\{0,1\}\), Brier score is exactly MSE applied to predicted probabilities. Probability RMSE is \(\sqrt{BS}\).</p>
+
+<h3>Entropy, cross-entropy and KL divergence</h3>
+<p>\[
+H(P)=-\sum_yP(y)\log P(y)
+\]</p>
+<p>\[
+H(P,Q)=-\sum_yP(y)\log Q(y)
+\]</p>
+<p>\[
+D_{KL}(P\|Q)=\sum_yP(y)\log\frac{P(y)}{Q(y)}
+\]</p>
+<div class="box good">
+<b>Always identify the distributions:</b><br>
+\(P\) is the target/reference/true distribution.<br>
+\(Q\) is the model-predicted or approximating distribution.
+</div>
+<p>The relationship is:</p>
+<p>\[
+H(P,Q)=H(P)+D_{KL}(P\|Q).
+\]</p>
+<p>\(H(P)\) is irreducible uncertainty in the target. KL is the extra penalty caused by using imperfect \(Q\).</p>
+
+<h3>Information score</h3>
+<p>A simple information contribution for the realized class is:</p>
+<p>\[
+I=\log\frac{P(y\mid output)}{P(y)}.
+\]</p>
+<p>Example: prior probability of disease is \(0.10\), the model posterior is \(0.80\), and disease is truly present:</p>
+<p>\[
+I=\log_2\frac{0.80}{0.10}=\log_2 8=3\text{ bits}.
+\]</p>
+<p>The model made the correct class eight times more plausible than the prior did. If the posterior were \(0.05\), the score would be \(-1\) bit: the model reduced belief in the class that was actually correct.</p>
+
+<h3>Calibration versus discrimination</h3>
+<p>Calibration asks whether predictions such as \(0.7\) correspond to approximately 70% positive frequency. Discrimination/ranking asks whether positives receive higher scores than negatives. A model can be good at one and poor at the other.</p>
+</section>
+
+<section id="agreement">
+<h2>10. Agreement, subgroup discovery, efficiency and alternate measures</h2>
+
+<h3>Chance-corrected agreement</h3>
+<p>\[
+\kappa=\frac{p_o-p_e}{1-p_e}
+\]</p>
+<p>\(p_o\) is observed agreement; \(p_e\) is agreement expected from marginal label frequencies. Fleiss’ kappa generalizes to multiple raters; ICC is commonly used for quantitative ratings.</p>
+
+<h3>Rule learning versus subgroup discovery</h3>
+<p><b>Rule learning</b> tries to predict the target for cases, for example: “if fever is high and oxygen is low, predict severe disease.”</p>
+<p><b>Subgroup discovery</b> searches for interpretable subsets whose target distribution is unusual, for example: “patients who regularly consume alcohol and have feature pattern X show an unusually high cancer rate.” The subgroup need not classify everyone.</p>
+
+<h3>WRAcc</h3>
+<p>\[
+WRAcc=P(subgroup)\left[P(+\mid subgroup)-P(+)\right].
+\]</p>
+<p>It rewards both:</p>
+<ul>
+<li><b>enrichment:</b> the subgroup has a higher positive rate than the population baseline;</li>
+<li><b>coverage:</b> the subgroup is large enough to matter.</li>
+</ul>
+<p>In Flach’s ROC form:</p>
+<p>\[
+WRAcc=\frac{c}{(1+c)^2}(TPR-FPR)
+\]</p>
+<p>possibly multiplied by \(4\) for rescaling. WRAcc was designed mainly for subgroup discovery, not primarily as a cost metric.</p>
+
+<h3>Efficiency method and Pareto analysis</h3>
+<p>The tutorial’s efficiency framework combines positive measures, where larger is better, with negative measures, where smaller is better:</p>
+<p>\[
+\varepsilon_S(f)=
+\frac{\sum_iw_i\,pmi_i^+(f)}
+{\sum_jw_j\,nm_j^-(f)}.
+\]</p>
+<p>Examples of positive metrics: accuracy, interestingness, comprehensibility. Examples of negative metrics: runtime, memory, monetary cost.</p>
+<p>A model is Pareto-optimal if no other model is at least as good on every objective and strictly better on at least one. The Pareto frontier contains all nondominated trade-offs.</p>
+
+<h3>Linear programming</h3>
+<p>Linear programming optimizes a linear objective under linear constraints:</p>
+<p>\[
+\max_x c^\top x\quad\text{subject to }Ax\le b.
+\]</p>
+<p>It can be used for resource allocation, scheduling, or selecting weights subject to stated preference constraints.</p>
+
+<h3>Visualization-based evaluation</h3>
+<p>Scalar metrics are projections of richer, high-dimensional model behaviour. A model can be represented by its performance or error profile across datasets, classes, subgroups or instances. PCA, multidimensional scaling, heatmaps and clustering can reveal:</p>
+<ul>
+<li>models with identical averages but different failure patterns;</li>
+<li>unusual model–domain interactions;</li>
+<li>outlier classifiers or datasets;</li>
+<li>structure lost by averaging binary and multiclass domains into one scalar.</li>
+</ul>
+</section>
+
+<section id="traps">
+<h2>11. Common exam traps</h2>
+<div class="box warn">
+<ol>
+<li>High accuracy does not imply useful minority-class performance.</li>
+<li>Recall and precision have different denominators.</li>
+<li>ROC point = one threshold; ROC curve = all thresholds.</li>
+<li>AUC does not evaluate probability calibration.</li>
+<li>AUC is better described as a ranking probability than as a simple average over costs.</li>
+<li>Small FPR may still mean many false alerts when negatives are enormous.</li>
+<li>F1 ignores TN.</li>
+<li>Balanced accuracy is not a universal cost-sensitive measure.</li>
+<li>Metric choice can change classifier ranking.</li>
+<li>Flach’s effective skew is the slope of an isometric, not \(\partial M/\partial c\).</li>
+</ol>
+</div>
+</section>
+
+<section id="questions">
+<h2>12. Exam-style questions</h2>
+<div class="quiz">
+<details><summary>Q1. A classifier has 99% accuracy on a 1% positive dataset. What must you inspect next?</summary><p>Confusion matrix, recall, precision, specificity/FPR, balanced accuracy, and possibly PR/ROC. Accuracy alone may come from always predicting negative.</p></details>
+<details><summary>Q2. Why can FPR look good while precision is poor?</summary><p>FPR divides FP by all negatives. With huge \(N\), many FP can still be a small fraction. Precision directly compares TP with FP among alerts.</p></details>
+<details><summary>Q3. What does AUC=0.8 mean?</summary><p>A random positive is ranked above a random negative with probability approximately 0.8.</p></details>
+<details><summary>Q4. Why might a cancer-screening threshold be lower than 0.5?</summary><p>Because FN cost is high; lowering the threshold raises sensitivity and lowers FNR, at the expense of more FP.</p></details>
+<details><summary>Q5. Explain Flach’s effective-skew ratio.</summary><p>It is the slope of an equal-metric contour in ROC space: the local TPR gain needed to compensate for an FPR increase while keeping the metric constant.</p></details>
+<details><summary>Q6. Why may two metrics choose different classifiers?</summary><p>They encode different denominators, error trade-offs, prevalence dependence, costs, or probability information.</p></details>
+</div>
+</section>
+
+</div></main>
+<script>
+document.querySelectorAll('#nav button').forEach(b=>b.addEventListener('click',()=>{
+ document.querySelectorAll('#nav button').forEach(x=>x.classList.remove('active'));b.classList.add('active');
+ document.querySelectorAll('section').forEach(s=>s.classList.remove('show'));document.getElementById(b.dataset.id).classList.add('show');
+ window.scrollTo({top:0,behavior:'smooth'});
+}));
+</script></body></html>

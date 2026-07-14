@@ -1,0 +1,1213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Interactive Textbook: Sampling, Dataset Splitting & Error Estimation in ML</title>
+
+<script>
+window.MathJax = {
+  tex: {
+    inlineMath: [['\\(','\\)']],
+    displayMath: [['\\[','\\]']],
+    processEscapes: true
+  },
+  chtml: { scale: 1.0 }
+};
+</script>
+<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+<style>
+:root{
+  --bg:#f5f7fb;--panel:#fff;--ink:#122033;--muted:#5b6b82;--line:#dbe3ef;
+  --blue:#2563eb;--blue2:#60a5fa;--green:#059669;--amber:#d97706;--red:#dc2626;
+  --violet:#7c3aed;--cyan:#0891b2;--shadow:0 14px 38px rgba(15,23,42,.10);--radius:18px;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:linear-gradient(#eef4ff,#f8fafc 18%,#f8fafc);
+  color:var(--ink);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif
+}
+header{
+  background:linear-gradient(135deg,#0f172a,#172554 55%,#1d4ed8);
+  color:#fff;padding:28px 24px;box-shadow:0 8px 30px rgba(15,23,42,.25)
+}
+.header-inner{max-width:1450px;margin:auto}
+.header-inner h1{margin:0 0 10px;font-size:clamp(28px,4vw,48px);line-height:1.05}
+.header-inner p{margin:0;color:#dbeafe;max-width:1180px;line-height:1.6}
+.app{max-width:1450px;margin:auto;padding:22px;display:grid;grid-template-columns:290px 1fr;gap:22px}
+.sidebar{
+  position:sticky;top:16px;align-self:start;background:rgba(255,255,255,.94);
+  backdrop-filter:blur(10px);border:1px solid #e2e8f0;border-radius:20px;padding:14px;
+  box-shadow:var(--shadow);max-height:calc(100vh - 32px);overflow:auto
+}
+.sidebar h3{margin:8px 8px 12px}
+.nav-btn{
+  width:100%;text-align:left;border:0;background:transparent;padding:10px 12px;
+  border-radius:12px;cursor:pointer;color:var(--ink);font-weight:650;margin:2px 0
+}
+.nav-btn:hover,.nav-btn.active{background:#dbeafe;color:#1d4ed8}
+.nav-group{
+  margin:12px 0 4px;color:var(--muted);font-size:.78rem;text-transform:uppercase;
+  letter-spacing:.08em;padding:0 8px
+}
+.main{display:grid;gap:22px}
+.card{
+  background:rgba(255,255,255,.97);border:1px solid #e5e7eb;border-radius:22px;
+  box-shadow:var(--shadow);padding:22px
+}
+.card h2{margin:0 0 8px;font-size:1.7rem}
+.card h3{margin:18px 0 8px}
+.lead{color:var(--muted);line-height:1.65;margin:0 0 16px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.mini{
+  border:1px solid var(--line);border-radius:16px;padding:14px;
+  background:linear-gradient(#fff,#f8fbff)
+}
+.mini b{display:block;margin-bottom:5px}
+.mini span,.mini p{color:var(--muted);line-height:1.5;margin:0}
+.badges{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 14px}
+.badge{padding:6px 9px;border-radius:999px;font-weight:750;font-size:.78rem;border:1px solid}
+.b-blue{background:#eff6ff;border-color:#bfdbfe;color:#1d4ed8}
+.b-green{background:#ecfdf5;border-color:#a7f3d0;color:#047857}
+.b-amber{background:#fff7ed;border-color:#fed7aa;color:#b45309}
+.b-violet{background:#f5f3ff;border-color:#ddd6fe;color:#6d28d9}
+.b-red{background:#fef2f2;border-color:#fecaca;color:#b91c1c}
+.b-cyan{background:#ecfeff;border-color:#a5f3fc;color:#0e7490}
+.flow{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
+.flow .step{
+  border:1px solid #cbd5e1;border-radius:14px;padding:12px;background:#fff;
+  min-height:120px;position:relative
+}
+.step .n{
+  display:inline-grid;place-items:center;width:25px;height:25px;border-radius:50%;
+  background:var(--blue);color:#fff;font-weight:800;font-size:.8rem;margin-bottom:8px
+}
+.step b{display:block}
+.step p{font-size:.9rem;color:var(--muted);line-height:1.45;margin:5px 0 0}
+.callout{
+  padding:14px 16px;border-radius:14px;border-left:5px solid var(--blue);
+  background:#eff6ff;line-height:1.55;margin:12px 0
+}
+.callout.good{border-color:var(--green);background:#ecfdf5}
+.callout.warn{border-color:var(--amber);background:#fff7ed}
+.callout.bad{border-color:var(--red);background:#fef2f2}
+.callout.violet{border-color:var(--violet);background:#f5f3ff}
+.lesson{display:none}
+.lesson.active{display:block}
+.summary-table{width:100%;border-collapse:collapse;margin:14px 0}
+.summary-table th,.summary-table td{
+  border:1px solid var(--line);padding:10px 12px;vertical-align:top;text-align:left
+}
+.summary-table th{width:235px;background:#eff6ff}
+.summary-table td{background:#fff}
+.tabs{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
+.tab{
+  border:1px solid var(--line);background:#fff;border-radius:999px;padding:8px 12px;
+  cursor:pointer;font-weight:700
+}
+.tab.active{background:#dbeafe;border-color:#93c5fd;color:#1d4ed8}
+.tabpane{display:none}.tabpane.active{display:block}
+
+/* Equations deliberately remain normal-size. No SVG scaling, no width fitting. */
+.mathbox{
+  border:1px solid #dbeafe;background:#f8fbff;border-radius:16px;padding:14px;
+  margin:12px 0;overflow-x:auto;font-size:1rem
+}
+.mathbox mjx-container[display="true"]{
+  text-align:left!important;margin:.35rem 0!important;font-size:1.02em!important;
+}
+.mathbox.compact mjx-container[display="true"]{font-size:.96em!important}
+.formula-label{
+  font-size:.82rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-weight:800
+}
+.controls{
+  display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin:12px 0
+}
+.controls label{font-weight:700;font-size:.9rem}
+.controls button,.controls select,.controls input[type=number]{
+  border:1px solid #cbd5e1;border-radius:10px;padding:8px 10px;background:#fff
+}
+.controls input[type=range]{width:190px}
+.controls button{cursor:pointer;font-weight:750}
+.controls .primary{background:var(--blue);color:#fff;border-color:var(--blue)}
+.result-panel{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:14px 0}
+.statbox{border:1px solid var(--line);border-radius:14px;padding:12px;background:#fff}
+.statbox b{font-size:.82rem;color:var(--muted);display:block;margin-bottom:6px}
+.statbox strong{font-size:1.12rem}
+.plot{width:100%;height:300px;border:1px solid var(--line);border-radius:16px;background:#fff}
+.plot.tall{height:440px}
+.table-wrap{overflow:auto;border:1px solid var(--line);border-radius:16px}
+.compare{width:100%;border-collapse:collapse;min-width:760px}
+.compare th,.compare td{border:1px solid var(--line);padding:9px 10px;vertical-align:top}
+.compare th{background:#eaf2ff;position:sticky;top:0}
+.compare tr:nth-child(even) td{background:#fbfdff}
+.glossary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.term{border:1px solid var(--line);border-radius:16px;padding:15px;background:linear-gradient(#fff,#f8fbff)}
+.term h4{margin:0 0 7px;color:#1d4ed8}.term p{margin:0;color:var(--muted);line-height:1.5}
+.pipeline{display:flex;align-items:stretch;gap:8px;flex-wrap:wrap}
+.pipeline .pipe{
+  flex:1 1 150px;border:1px solid #bfdbfe;border-radius:14px;padding:12px;
+  background:#f8fbff;min-height:92px
+}
+.pipeline .arr{display:grid;place-items:center;color:#2563eb;font-size:1.4rem;font-weight:900}
+details{
+  border:1px solid #dbe3ef;border-radius:14px;padding:10px 13px;margin:10px 0;
+  background:#fbfdff
+}
+details summary{cursor:pointer;font-weight:800;color:#1d4ed8}
+details[open] summary{margin-bottom:8px}
+.hierarchy{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.hnode{
+  border:1px solid #bfdbfe;background:#f8fbff;border-radius:16px;padding:14px;
+  cursor:pointer;transition:.18s
+}
+.hnode:hover{transform:translateY(-2px);box-shadow:0 8px 18px rgba(37,99,235,.12)}
+.hnode strong{display:block;margin-bottom:5px}.hnode span{color:var(--muted);font-size:.9rem;line-height:1.4}
+.decision-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.decision-node{
+  border:1px solid #cbd5e1;border-radius:16px;padding:14px;background:#fff;cursor:pointer
+}
+.decision-node:hover{border-color:#60a5fa;background:#f8fbff}
+.split-row{display:grid;grid-template-columns:145px 1fr;gap:10px;align-items:center;margin:7px 0}
+.split-label{font-size:.82rem;color:var(--muted);text-align:right}
+.split-bar{height:24px;border:1px solid #cbd5e1;border-radius:8px;overflow:hidden;display:flex;background:#f1f5f9}
+.trainseg{background:#60a5fa}.testseg{background:#fb923c}.oobseg{background:#f59e0b}.unusedseg{background:#e2e8f0}
+.legend{display:flex;flex-wrap:wrap;gap:14px;color:var(--muted);font-size:.9rem}
+.legend i{display:inline-block;width:13px;height:13px;border-radius:3px;margin-right:5px;vertical-align:-2px}
+.issue-map{display:grid;grid-template-columns:190px repeat(5,1fr);gap:6px;align-items:stretch}
+.issue-map>div{padding:10px;border:1px solid var(--line);border-radius:10px;background:#fff;font-size:.88rem}
+.issue-map .hdr{background:#dbeafe;font-weight:800;text-align:center}
+.issue-map .rowhdr{background:#eff6ff;font-weight:750}
+.issue-ok{background:#ecfdf5!important}.issue-warn{background:#fff7ed!important}.issue-bad{background:#fef2f2!important}
+.slider-value{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:#1d4ed8;font-weight:800}
+.source-note{font-size:.88rem;color:var(--muted);border-top:1px dashed var(--line);padding-top:10px;margin-top:14px}
+.footer-note{color:var(--muted);font-size:.9rem;line-height:1.5}
+.hidden{display:none!important}
+@media(max-width:1100px){
+  .app{grid-template-columns:1fr}.sidebar{position:static;max-height:none}
+  .flow{grid-template-columns:repeat(2,1fr)}
+  .grid2,.grid3,.grid4,.hierarchy,.decision-grid{grid-template-columns:1fr}
+  .result-panel{grid-template-columns:repeat(2,1fr)}
+  .issue-map{grid-template-columns:170px repeat(2,1fr)}
+}
+@media(max-width:650px){
+  .flow{grid-template-columns:1fr}.result-panel{grid-template-columns:1fr}
+  .card{padding:16px}.app{padding:12px}.sidebar{display:none}
+  .split-row{grid-template-columns:1fr}.split-label{text-align:left}
+}
+</style>
+</head>
+<body>
+
+<header>
+<div class="header-inner">
+  <h1>Sampling, Dataset Splitting & Error Estimation in Machine Learning</h1>
+  <p>
+    An interactive textbook for exam preparation: population → available sample → training/test design →
+    trained model(s) → empirical error → uncertainty → interpretation. It covers hold-out, confidence bounds,
+    k-fold and stratified CV, leave-one-out, repeated sampling, bootstrap, 5×2CV, 10×10CV,
+    randomization, temporal/group splitting, bias–variance distinctions, and method selection.
+  </p>
+</div>
+</header>
+
+<div class="app">
+<aside class="sidebar">
+  <h3>Textbook</h3>
+  <div class="nav-group">Foundations</div>
+  <button class="nav-btn active" data-target="overview">Evaluation pipeline</button>
+  <button class="nav-btn" data-target="terminology">Terminology map</button>
+  <button class="nav-btn" data-target="hierarchy">Method hierarchy</button>
+  <button class="nav-btn" data-target="need">Why resampling?</button>
+  <button class="nav-btn" data-target="biasvariance">Bias & variance map</button>
+
+  <div class="nav-group">Core methods</div>
+  <button class="nav-btn" data-target="resub">Re-substitution</button>
+  <button class="nav-btn" data-target="holdout">Hold-out</button>
+  <button class="nav-btn" data-target="uncertainty">Hold-out uncertainty lab</button>
+  <button class="nav-btn" data-target="kfold">k-fold CV</button>
+  <button class="nav-btn" data-target="stratified">Stratified CV</button>
+  <button class="nav-btn" data-target="loo">Leave-one-out</button>
+  <button class="nav-btn" data-target="randomsub">Random sub-sampling</button>
+  <button class="nav-btn" data-target="repeatedcv">Repeated CV · 5×2 · 10×10</button>
+  <button class="nav-btn" data-target="bootstrap">Bootstrap · E0 · .632</button>
+  <button class="nav-btn" data-target="randomization">Randomization / permutation</button>
+
+  <div class="nav-group">Real-world splitting</div>
+  <button class="nav-btn" data-target="structured">Time, groups, locations</button>
+  <button class="nav-btn" data-target="leakage">Leakage laboratory</button>
+
+  <div class="nav-group">Choose & revise</div>
+  <button class="nav-btn" data-target="selector">Interactive method selector</button>
+  <button class="nav-btn" data-target="simulator">Split/model simulator</button>
+  <button class="nav-btn" data-target="comparison">Master comparison table</button>
+  <button class="nav-btn" data-target="exam">Exam insights</button>
+</aside>
+
+<main class="main">
+
+<section id="overview" class="card lesson active">
+<h2>The central relationship: the split defines the evidence</h2>
+<p class="lead">
+  A performance number is not produced only by a metric. It is produced by a full experimental design.
+  The same classifier and the same metric can give different meanings under hold-out, cross-validation,
+  bootstrap, temporal validation, or group validation.
+</p>
+<div class="flow">
+  <div class="step"><span class="n">1</span><b>Target population</b><p>What future examples, patients, times, locations, or domains do we care about?</p></div>
+  <div class="step"><span class="n">2</span><b>Available sample</b><p>One finite dataset drawn imperfectly from that target population.</p></div>
+  <div class="step"><span class="n">3</span><b>Split / resampling</b><p>Decide which observations train models and which imitate future unseen data.</p></div>
+  <div class="step"><span class="n">4</span><b>Train model(s)</b><p>One model for hold-out; \(k\) models for \(k\)-fold CV; many models for repeated CV/bootstrap.</p></div>
+  <div class="step"><span class="n">5</span><b>Error estimator</b><p>Average loss on test-like observations or average across folds/repetitions.</p></div>
+  <div class="step"><span class="n">6</span><b>Interpretation</b><p>Specify what was estimated, uncertainty, dependencies, and deployment scenario.</p></div>
+</div>
+<div class="callout"><b>Golden exam question:</b> What exactly is the target of this estimate: one fixed trained classifier, a learning algorithm trained on a particular sample size, or a future final model trained on all available data?</div>
+<div class="grid3">
+  <div class="mini"><b>One fixed hold-out model</b><p>Estimate error of the specific model trained on \(S\), using untouched test sample \(T\).</p></div>
+  <div class="mini"><b>Cross-validation</b><p>Estimate average behavior of a learning procedure trained repeatedly on \((k-1)/k\) of the data.</p></div>
+  <div class="mini"><b>Structured validation</b><p>Estimate future-time, unseen-person, unseen-group, or unseen-location generalization.</p></div>
+</div>
+</section>
+
+<section id="terminology" class="card lesson">
+<h2>Terminology map: sample, estimator, estimate, error and risk</h2>
+<p class="lead">Many confusions disappear once every noun is attached to the correct object.</p>
+<div class="glossary-grid">
+  <div class="term"><h4>Population / target distribution \(D\)</h4><p>The conceptual source of future examples. It may mean future IID cases, future patients, future times, or new locations—depending on deployment.</p></div>
+  <div class="term"><h4>Available dataset \(D_n\)</h4><p>The finite observed sample. It is not the population itself and does not contain all possible future variation.</p></div>
+  <div class="term"><h4>Training sample \(S\)</h4><p>The observations used to fit parameters, choose rules, or learn representations.</p></div>
+  <div class="term"><h4>Test sample \(T\)</h4><p>Observations kept outside fitting and used to imitate unseen cases.</p></div>
+  <div class="term"><h4>Sampling / splitting method</h4><p>The rule that assigns observations to train/test roles: hold-out, folds, bootstrap draws, time blocks, groups.</p></div>
+  <div class="term"><h4>Resampling</h4><p>Reuse the finite dataset in multiple train/test arrangements. It does not create new real information.</p></div>
+  <div class="term"><h4>True risk \(R(f)\)</h4><p>The unknown expected loss on the target population.</p></div>
+  <div class="term"><h4>Estimator</h4><p>A random rule/formula computed from a sample, e.g. test error \(R_T(f)\).</p></div>
+  <div class="term"><h4>Estimate</h4><p>The concrete numerical result produced by an estimator, e.g. \(15/100=0.15\).</p></div>
+  <div class="term"><h4>Bias of an estimator</h4><p>Systematic difference between its expected value and its target quantity.</p></div>
+  <div class="term"><h4>Variance of an estimator</h4><p>How much the reported estimate changes across possible samples/splits.</p></div>
+  <div class="term"><h4>Model variance</h4><p>How much the learned prediction function changes when the training sample changes. Do not confuse this with variance of the error estimate.</p></div>
+</div>
+<div class="callout warn"><b>Vocabulary trap:</b> “sample” can mean the whole observed dataset, one train/test subset, one bootstrap dataset, or—as a verb—one draw. Always name the level explicitly.</div>
+</section>
+
+<section id="hierarchy" class="card lesson">
+<h2>Graphical hierarchy of error-estimation methods</h2>
+<p class="lead">Click a box to jump to the detailed lesson.</p>
+<div class="hierarchy">
+  <div class="hnode" data-jump="resub"><strong>Re-substitution</strong><span>Train and test on the same observations. Optimistic training error.</span></div>
+  <div class="hnode" data-jump="holdout"><strong>Hold-out</strong><span>One separate train/test split. Clean and simple, but split-sensitive.</span></div>
+  <div class="hnode" data-jump="kfold"><strong>k-fold CV</strong><span>One complete fold design. \(k\) models and an averaged estimate.</span></div>
+  <div class="hnode" data-jump="stratified"><strong>Stratified CV</strong><span>Preserve class proportions across folds.</span></div>
+  <div class="hnode" data-jump="loo"><strong>Leave-one-out</strong><span>Extreme CV with \(k=n\); train on \(n-1\), test on one.</span></div>
+  <div class="hnode" data-jump="randomsub"><strong>Random sub-sampling</strong><span>Repeated random hold-out splits.</span></div>
+  <div class="hnode" data-jump="repeatedcv"><strong>Repeated k-fold CV</strong><span>Repeat the whole fold construction. Includes 5×2CV and 10×10CV.</span></div>
+  <div class="hnode" data-jump="bootstrap"><strong>Bootstrap</strong><span>Sample with replacement; evaluate with out-of-bag observations.</span></div>
+  <div class="hnode" data-jump="randomization"><strong>Randomization</strong><span>Shuffle labels/order to assess signal or stability.</span></div>
+  <div class="hnode" data-jump="structured"><strong>Structured splits</strong><span>Time, group, patient, subject, machine, location.</span></div>
+  <div class="hnode" data-jump="selector"><strong>Method-selection criteria</strong><span>Domain, size, dependence, expected error, algorithm, computation.</span></div>
+  <div class="hnode" data-jump="comparison"><strong>Master comparison</strong><span>Target, models trained, bias, variance, dependence, cost.</span></div>
+</div>
+<div class="callout violet">
+  <b>Taxonomy clarification:</b> ordinary \(k\)-fold CV already contains multiple train/test runs.
+  In the tutorial’s wording, “simple resampling” means one complete resampling design performed once,
+  while “multiple resampling” repeats an entire design or generates many bootstrap/randomization samples.
+</div>
+</section>
+
+<section id="need" class="card lesson">
+<h2>Why is resampling needed?</h2>
+<p class="lead">With one finite dataset, training quality and evaluation precision compete for the same observations.</p>
+<div class="grid2">
+  <div class="mini"><b>Too little training data</b><p>The trained model may be systematically worse than a model trained on more data. This is a model/training-size issue.</p></div>
+  <div class="mini"><b>Too little test data</b><p>The measured error fluctuates strongly from one possible test sample to another. This is variance of the error estimator.</p></div>
+</div>
+<div class="controls">
+  <label>Total observations <input id="needN" type="range" min="50" max="2000" value="500" step="50" oninput="updateNeed()"></label>
+  <span id="needNVal" class="slider-value"></span>
+  <label>Training fraction <input id="needFrac" type="range" min="20" max="90" value="70" step="5" oninput="updateNeed()"></label>
+  <span id="needFracVal" class="slider-value"></span>
+</div>
+<div id="needBar"></div>
+<div class="result-panel">
+  <div class="statbox"><b>Training observations</b><strong id="needTrain"></strong></div>
+  <div class="statbox"><b>Test observations</b><strong id="needTest"></strong></div>
+  <div class="statbox"><b>One test mistake changes error by</b><strong id="needStep"></strong></div>
+  <div class="statbox"><b>Training-data pressure</b><strong id="needPressure"></strong></div>
+</div>
+<div class="callout">
+  Resampling does not remove the finite-data limitation. It allows each observation to serve as test evidence in some runs
+  and training information in other runs, making more efficient use of the available sample.
+</div>
+<details open><summary>What did the tutorial mean by “allows for closer duplication conditions”?</summary>
+<p>It is best read as: resampling more closely imitates repeated experiments. Ideally, we would collect many fresh datasets from the population, retrain, and retest. Since we usually have only one dataset, repeated splits/bootstrap samples approximate those repeated conditions.</p>
+</details>
+</section>
+
+<section id="biasvariance" class="card lesson">
+<h2>Bias and variance: four different objects that must not be mixed</h2>
+<div class="issue-map">
+  <div class="hdr">Object</div><div class="hdr">Meaning</div><div class="hdr">Increased by</div><div class="hdr">Reduced by</div><div class="hdr">Exam warning</div><div class="hdr">Example</div>
+  <div class="rowhdr">Model bias</div><div>Systematic mismatch between average learned prediction and optimal predictor.</div><div class="issue-warn">Restricted model class, weak features, sometimes too little training data.</div><div class="issue-ok">Better representation/model, more informative training data.</div><div>Not the same as bias of a performance estimator.</div><div>Linear model for a strongly nonlinear relationship.</div>
+  <div class="rowhdr">Model variance</div><div>Sensitivity of learned predictions to which training sample was obtained.</div><div class="issue-warn">Flexible algorithms, small training samples.</div><div class="issue-ok">More data, regularization, ensembling.</div><div>Concerns changing fitted models.</div><div>Two small training samples yield very different trees.</div>
+  <div class="rowhdr">Estimator bias</div><div>Systematic difference between expected reported error and target error.</div><div class="issue-warn">Training on fewer observations than the target final model; re-substitution in the opposite direction.</div><div class="issue-ok">Match training size/target; independent test design; corrections.</div><div>Specify the target before calling an estimate pessimistic/optimistic.</div><div>2-fold CV may overestimate error of a final full-data model.</div>
+  <div class="rowhdr">Estimator variance</div><div>Instability of reported error across possible splits/test samples.</div><div class="issue-warn">Small test sets, few repetitions, rare events.</div><div class="issue-ok">Larger independent test sample, repeated evaluation, stratification.</div><div>Does not automatically imply the underlying model has high variance.</div><div>One extra error changes a 10-case test score by 10 percentage points.</div>
+</div>
+<div class="callout warn">
+  The tutorial’s statement “bias is independent of the training set while variance isn’t” describes bias as an average tendency over possible training sets,
+  while variance explicitly measures changes across training sets. Training-set <em>size</em> can nevertheless change the algorithm’s average behavior and therefore its bias.
+</div>
+</section>
+
+<section id="resub" class="card lesson">
+<h2>Re-substitution</h2>
+<div class="badges"><span class="badge b-red">TRAIN = TEST</span><span class="badge b-amber">OPTIMISTIC</span><span class="badge b-blue">ONE MODEL</span></div>
+<table class="summary-table">
+<tr><th>Procedure</th><td>Train on all available observations and evaluate on those same observations.</td></tr>
+<tr><th>What is estimated?</th><td>Training error—not clean unseen-data/generalization error.</td></tr>
+<tr><th>Why optimistic?</th><td>The fitted model was selected specifically to perform well on those observations; flexible models can memorize them.</td></tr>
+<tr><th>Useful for</th><td>Diagnostics, optimization monitoring, and as the optimistic component of the .632 bootstrap.</td></tr>
+<tr><th>Do not use for</th><td>Final claims about future performance.</td></tr>
+</table>
+<div class="mathbox">\[
+R_{\mathrm{resub}}(f_D)=\frac{1}{n}\sum_{i=1}^{n}L(y_i,f_D(x_i)).
+\]</div>
+<div class="callout bad"><b>Complete overfit:</b> a sufficiently flexible classifier may achieve almost zero re-substitution error while failing badly on new examples.</div>
+</section>
+
+<section id="holdout" class="card lesson">
+<h2>Hold-out evaluation</h2>
+<div class="badges"><span class="badge b-green">INDEPENDENT TEST SET</span><span class="badge b-blue">ONE MODEL</span><span class="badge b-violet">CLEAN CONFIDENCE BOUNDS</span></div>
+<table class="summary-table">
+<tr><th>Procedure</th><td>Set aside test set \(T\); train \(f_S\) on \(S\); evaluate only once on untouched \(T\).</td></tr>
+<tr><th>What is estimated?</th><td>Risk of the specific classifier trained on \(S\). Relative to a future model trained on all data, the estimate may be pessimistic because \(S\) is smaller.</td></tr>
+<tr><th>Advantages</th><td>Independence from training, simple interpretation, model-agnostic, clean binomial/Gaussian/concentration uncertainty analysis.</td></tr>
+<tr><th>Main weakness</th><td>One split can be unrepresentative; small \(T\) gives high estimator variance; small \(S\) can produce a weaker model.</td></tr>
+<tr><th>Best when</th><td>Dataset is large enough to afford a substantial untouched test set.</td></tr>
+</table>
+<div class="mathbox">
+<div class="formula-label">True risk</div>
+\[
+R(f)=\mathbb{E}_{(x,y)\sim D}\left[L(y,f_S(x))\right].
+\]
+</div>
+<div class="mathbox">
+<div class="formula-label">Empirical hold-out risk</div>
+\[
+R_T(f)=\frac{1}{m'}\sum_{i=1}^{m'}L(y_i,f_S(x_i)).
+\]
+</div>
+<div class="callout good"><b>“Generalization behavior can be characterized”:</b> because \(T\) is outside fitting, its losses provide evidence about unseen cases. This does not mean zero uncertainty; it means the evidence is not training-contaminated.</div>
+<div class="callout"><b>“Estimates for any classifier”:</b> hold-out is model-agnostic. It needs only predictions/losses, not differentiability, a probabilistic model, or access to internal parameters.</div>
+</section>
+
+<section id="uncertainty" class="card lesson">
+<h2>Hold-out uncertainty laboratory</h2>
+<p class="lead">Follow the complete path: one binary error → error count → observed rate → three uncertainty methods → required test size.</p>
+
+<div class="grid2">
+<div>
+  <div class="controls">
+    <label>Test size \(m'\) <input id="uM" type="range" min="10" max="1000" step="10" value="100" oninput="updateUncertainty()"></label>
+    <span id="uMVal" class="slider-value"></span>
+    <label>Observed errors \(k\) <input id="uK" type="range" min="0" max="100" step="1" value="15" oninput="updateUncertainty()"></label>
+    <span id="uKVal" class="slider-value"></span>
+    <label>Confidence \(1-\delta\) <input id="uConf" type="range" min="80" max="99" step="1" value="95" oninput="updateUncertainty()"></label>
+    <span id="uConfVal" class="slider-value"></span>
+    <label>Desired \(\epsilon\) <input id="uDesired" type="range" min="1" max="25" step="1" value="5" oninput="updateUncertainty()"></label>
+    <span id="uDesiredVal" class="slider-value"></span>
+  </div>
+  <div class="result-panel">
+    <div class="statbox"><b>Observed rate \(\hat p\)</b><strong id="uP"></strong></div>
+    <div class="statbox"><b>Gaussian interval</b><strong id="uGauss"></strong></div>
+    <div class="statbox"><b>Exact binomial interval</b><strong id="uExact"></strong></div>
+    <div class="statbox"><b>Hoeffding interval</b><strong id="uHoeff"></strong></div>
+  </div>
+  <div class="result-panel">
+    <div class="statbox"><b>Gaussian standard error</b><strong id="uSE"></strong></div>
+    <div class="statbox"><b>Hoeffding \(\epsilon\)</b><strong id="uHEps"></strong></div>
+    <div class="statbox"><b>Required \(m'\)</b><strong id="uReq"></strong></div>
+    <div class="statbox"><b>One error changes rate by</b><strong id="uOne"></strong></div>
+  </div>
+</div>
+<div>
+  <svg id="uPlot" class="plot tall" viewBox="0 0 900 440"></svg>
+  <div class="legend">
+    <span><i style="background:#ea580c"></i>Binomial probability mass</span>
+    <span><i style="background:#2563eb"></i>Gaussian approximation</span>
+    <span><i style="background:#059669"></i>Observed \(\hat p\)</span>
+    <span><i style="background:#dc2626"></i>Hoeffding interval</span>
+  </div>
+</div>
+</div>
+
+<div class="tabs" data-tabs="unc">
+<button class="tab active" data-pane="unc-levels">Distribution levels</button>
+<button class="tab" data-pane="unc-paths">Three paths</button>
+<button class="tab" data-pane="unc-hoeff">Hoeffding derivation</button>
+<button class="tab" data-pane="unc-size">Sample-size derivation</button>
+<button class="tab" data-pane="unc-meaning">\(\epsilon,\delta,m'\)</button>
+</div>
+
+<div id="unc-levels" class="tabpane active">
+<div class="grid3">
+  <div class="mini"><b>One example: Bernoulli</b><p>\(Z_i=1\) for an error and \(0\) for correct. \(Z_i\sim Bernoulli(p)\), where \(p=R(f)\).</p></div>
+  <div class="mini"><b>Error count: Binomial</b><p>\(K=\sum_i Z_i\sim Binomial(m',p)\). Its mean is \(m'p\), not \(p\).</p></div>
+  <div class="mini"><b>Error rate: sample mean</b><p>\(\hat p=K/m'\). Its expectation is \(p\), and CLT gives a Gaussian approximation for large \(m'\).</p></div>
+</div>
+<div class="mathbox compact">\[
+\mathbb{E}[K]=m'p,\qquad
+\mathbb{E}\!\left[\frac{K}{m'}\right]=p,\qquad
+R_T(f)=\hat p=\frac{K}{m'}.
+\]</div>
+</div>
+
+<div id="unc-paths" class="tabpane">
+<div class="grid3">
+  <div class="mini"><b>Exact binomial inversion</b><p>Observe \(K=k\), then find which values of \(p\) would make this count plausible. Produces lower/upper binomial confidence bounds.</p></div>
+  <div class="mini"><b>Gaussian / CLT</b><p>Approximate the sampling distribution of \(\hat p\) as normal and use \(\hat p\pm zSE\).</p></div>
+  <div class="mini"><b>Hoeffding</b><p>Use only independence and bounded loss \(Z_i\in[0,1]\). Safe and distribution-free, but usually conservative.</p></div>
+</div>
+<div class="mathbox compact">\[
+CI_{\mathrm{Gauss}}
+=\hat p\pm z_{1-\delta/2}\sqrt{\frac{\hat p(1-\hat p)}{m'}}.
+\]</div>
+<div class="mathbox compact">\[
+P\!\left(|R_T(f)-R(f)|>\epsilon\right)\le 2e^{-2m'\epsilon^2}.
+\]</div>
+</div>
+
+<div id="unc-hoeff" class="tabpane">
+<div class="callout">The displayed tutorial formula has Hoeffding form. It is not the ordinary Gaussian interval, even though the surrounding slides discuss Bernoulli/binomial errors.</div>
+<div class="mathbox compact">\[
+P(|R_T-R|>\epsilon)\le 2e^{-2m'\epsilon^2}.
+\]</div>
+<p>Demand failure probability at most \(\delta\):</p>
+<div class="mathbox compact">\[
+2e^{-2m'\epsilon^2}\le\delta
+\Longrightarrow e^{-2m'\epsilon^2}\le\frac{\delta}{2}
+\Longrightarrow -2m'\epsilon^2\le\ln\!\left(\frac{\delta}{2}\right).
+\]</div>
+<div class="mathbox compact">\[
+2m'\epsilon^2\ge\ln\!\left(\frac{2}{\delta}\right)
+\Longrightarrow
+\epsilon=\sqrt{\frac{1}{2m'}\ln\!\left(\frac{2}{\delta}\right)}.
+\]</div>
+</div>
+
+<div id="unc-size" class="tabpane">
+<div class="mathbox compact">\[
+\epsilon^2=\frac{1}{2m'}\ln\!\left(\frac{2}{\delta}\right)
+\Longrightarrow
+2m'\epsilon^2=\ln\!\left(\frac{2}{\delta}\right)
+\Longrightarrow
+m'\ge\frac{1}{2\epsilon^2}\ln\!\left(\frac{2}{\delta}\right).
+\]</div>
+<div class="callout good"><b>Final meaning:</b> \(m'\) is the required independent test-set size—not training size and not total dataset size.</div>
+</div>
+
+<div id="unc-meaning" class="tabpane">
+<table class="summary-table">
+<tr><th>\(\epsilon\)</th><td>Allowed absolute difference between observed test error and true risk. \(\epsilon=.05\) means ±5 percentage points.</td></tr>
+<tr><th>\(\delta\)</th><td>Failure probability. \(\delta=.05\) means the bound is intended to succeed with probability at least \(1-\delta=.95\).</td></tr>
+<tr><th>\(m'\)</th><td>Number of independent hold-out test observations contributing to the empirical average.</td></tr>
+<tr><th>Growth</th><td>Required \(m'\) grows as \(1/\epsilon^2\). Halving the desired margin requires roughly four times as many test examples.</td></tr>
+</table>
+</div>
+</section>
+
+<section id="kfold" class="card lesson">
+<h2>k-fold cross-validation</h2>
+<div class="badges"><span class="badge b-blue">ONE COMPLETE RESAMPLING DESIGN</span><span class="badge b-green">USES ALL CASES FOR TESTING</span><span class="badge b-amber">OVERLAPPING TRAINING SETS</span></div>
+<table class="summary-table">
+<tr><th>Procedure</th><td>Partition into \(k\) folds. For each fold, train on the other \(k-1\) folds and test on the held-out fold.</td></tr>
+<tr><th>Models trained</th><td>\(k\).</td></tr>
+<tr><th>Training size per model</th><td>Approximately \(n(k-1)/k\).</td></tr>
+<tr><th>What is estimated?</th><td>Average behavior of the learning algorithm trained on \((k-1)/k\) of the data—not risk of one fixed classifier.</td></tr>
+<tr><th>Main advantage</th><td>Every case receives an out-of-fold prediction while each model trains on most data.</td></tr>
+<tr><th>Main complication</th><td>Training sets overlap heavily, so fold estimates are dependent.</td></tr>
+</table>
+<div id="kfoldDemo"></div>
+<div class="callout warn">
+  The fold test sets are disjoint within one CV run, but the fitted models are not independent because their training sets share most observations.
+  This is why a naive ordinary t-test over fold scores can underestimate uncertainty.
+</div>
+<details open><summary>Why can CV be biased?</summary>
+<p>The CV models train on fewer observations than a final model trained on all \(n\) cases. If learning improves with training size, CV can be pessimistic relative to the final full-data model. Small \(k\) creates larger training-size mismatch. Large \(k\) reduces that mismatch but increases overlap and computational cost.</p>
+</details>
+<details><summary>Why “averaged estimate over \(k\) classifiers” matters</summary>
+<p>Each fold has its own fitted classifier \(f_1,\ldots,f_k\). The reported CV score averages their test losses. After CV, you usually fit a new final classifier on all data; that final classifier was not directly tested by the CV folds.</p>
+</details>
+</section>
+
+<section id="stratified" class="card lesson">
+<h2>Stratified k-fold cross-validation</h2>
+<div class="badges"><span class="badge b-green">CLASS PROPORTIONS PRESERVED</span><span class="badge b-blue">CLASSIFICATION</span><span class="badge b-amber">NOT A LEAKAGE CURE</span></div>
+<table class="summary-table">
+<tr><th>Purpose</th><td>Make every fold’s class proportions approximately match the full dataset.</td></tr>
+<tr><th>Most important when</th><td>Classes are imbalanced, minority counts are small, or metrics such as recall/precision/F1 require enough positives in every fold.</td></tr>
+<tr><th>Still useful when balanced?</th><td>Yes, especially with small data; it reduces accidental imbalance. With large balanced data, random folds are already likely to be similar.</td></tr>
+<tr><th>Does not solve</th><td>Patient leakage, time leakage, repeated-measure dependence, or location overlap.</td></tr>
+</table>
+<div class="controls">
+<label>Total positives <input id="stPos" type="range" min="5" max="500" value="50" step="5" oninput="updateStrat()"></label><span id="stPosVal" class="slider-value"></span>
+<label>Total negatives <input id="stNeg" type="range" min="10" max="1000" value="950" step="10" oninput="updateStrat()"></label><span id="stNegVal" class="slider-value"></span>
+<label>Folds \(k\) <input id="stK" type="range" min="2" max="10" value="10" step="1" oninput="updateStrat()"></label><span id="stKVal" class="slider-value"></span>
+</div>
+<div id="stratDemo"></div>
+<div class="callout"><b>Your earlier intuition was correct:</b> slight imbalance in a large originally balanced dataset is often less damaging. In an imbalanced dataset, a small change can remove most or all minority examples from a fold, making evaluation unstable or undefined.</div>
+</section>
+
+<section id="loo" class="card lesson">
+<h2>Leave-one-out cross-validation (LOO)</h2>
+<div class="badges"><span class="badge b-blue">\(k=n\)</span><span class="badge b-green">TRAIN ON \(n-1\)</span><span class="badge b-red">TRAIN \(n\) MODELS</span></div>
+<table class="summary-table">
+<tr><th>Procedure</th><td>For each observation, train on all other \(n-1\) observations and test on that single case.</td></tr>
+<tr><th>Training-size bias</th><td>Small relative to a model trained on all \(n\), because \(n-1\approx n\).</td></tr>
+<tr><th>Estimator variance</th><td>Can be high: each individual test fold contains one observation, and fitted models are extremely correlated.</td></tr>
+<tr><th>Computation</th><td>\(n\) model fits; too expensive for large \(n\) unless the algorithm has an efficient shortcut.</td></tr>
+<tr><th>Possible use</th><td>Moderate dataset sizes, cheap learning algorithms, situations where losing training observations is costly.</td></tr>
+</table>
+<div class="callout warn"><b>“Practically unbiased classifier” in the tutorial:</b> interpret this narrowly as little training-size mismatch. It does not mean the model has zero modeling bias or that the finite sample suddenly reveals the true data-generating function.</div>
+<details open><summary>Why can LOO still have high variance?</summary>
+<p>LOO models differ by only one observation, so their errors can be highly correlated. A single influential/extreme observation can strongly affect the aggregate. “Large training sets per fold” and “low variance of the final estimator” are not the same statement.</p>
+</details>
+<details><summary>Wide dispersion and extreme values</summary>
+<p>The tutorial notes potential usefulness under wide dispersion/extreme values because every case gets tested individually and almost all other observations train the model. However, influential outliers can also make LOO unstable, so this is not a universal guarantee.</p>
+</details>
+</section>
+
+<section id="randomsub" class="card lesson">
+<h2>Repeated random sub-sampling / repeated hold-out</h2>
+<div class="badges"><span class="badge b-blue">REPEAT RANDOM SPLITS</span><span class="badge b-green">REDUCES ONE-SPLIT DEPENDENCE</span><span class="badge b-amber">OVERLAP REMAINS</span></div>
+<table class="summary-table">
+<tr><th>Procedure</th><td>Choose a train/test ratio, draw many random splits, train and test once per split, average scores.</td></tr>
+<tr><th>Difference from k-fold</th><td>Some cases may be tested many times and others rarely; folds do not form one exhaustive partition.</td></tr>
+<tr><th>Advantage</th><td>Shows sensitivity to random splits and can reduce Monte Carlo noise from one hold-out.</td></tr>
+<tr><th>Dependence</th><td>Splits overlap, so repetition scores are not independent fresh experiments.</td></tr>
+<tr><th>Statistical testing</th><td>Naive paired t over repetitions is unsafe; corrected resampled tests were designed for overlap.</td></tr>
+</table>
+<div class="callout violet">Ten random splits are ten reuses of one dataset—not ten new datasets from the population.</div>
+</section>
+
+<section id="repeatedcv" class="card lesson">
+<h2>Repeated cross-validation: 5×2CV and 10×10CV</h2>
+<div class="tabs" data-tabs="rcv">
+<button class="tab active" data-pane="rcv-general">General repeated CV</button>
+<button class="tab" data-pane="rcv-five">5×2CV</button>
+<button class="tab" data-pane="rcv-ten">10×10CV</button>
+<button class="tab" data-pane="rcv-count">Model-count calculator</button>
+</div>
+<div id="rcv-general" class="tabpane active">
+<p>Repeat an entire \(k\)-fold partition with new random fold assignments. This reduces dependence on one arbitrary partition, but does not make fold scores independent.</p>
+<div class="mathbox">\[
+\text{number of trained models}=(\text{repetitions})\times k.
+\]</div>
+<div class="callout warn">Repeated CV reduces partition instability. It does not remove overlap dependence, and the large number of scores must not be treated as equally many independent datasets.</div>
+</div>
+<div id="rcv-five" class="tabpane">
+<div class="pipeline">
+<div class="pipe"><b>Repetition \(r\)</b><br>Random 50/50 split into A and B.</div><div class="arr">→</div>
+<div class="pipe"><b>Model 1</b><br>Train A, test B.</div><div class="arr">→</div>
+<div class="pipe"><b>Model 2</b><br>Train B, test A.</div><div class="arr">→</div>
+<div class="pipe"><b>Repeat ×5</b><br>Total 10 fitted models.</div>
+</div>
+<div class="callout">
+  <b>Why specifically 5×2?</b> It is a historical protocol proposed with Dietterich’s statistical test.
+  Two-fold provides complementary disjoint training halves within each repetition; five repetitions were a practical compromise in simulations—not a universal constant.
+</div>
+<div class="callout warn">Each model uses only 50% of data, so performance may be pessimistic relative to a final full-data model.</div>
+</div>
+<div id="rcv-ten" class="tabpane">
+<p>Ten-fold CV repeated ten times gives:</p>
+<div class="mathbox">\[
+10\text{ repetitions}\times 10\text{ folds}=100\text{ fitted models}.
+\]</div>
+<p>For \(n=1000\), each model trains on approximately 900 observations and tests on approximately 100.</p>
+<div class="callout warn">The 100 scores are correlated. This design gives a stable descriptive average but not 100 independent experimental units.</div>
+</div>
+<div id="rcv-count" class="tabpane">
+<div class="controls">
+<label>Dataset \(n\) <input id="rcN" type="number" value="1000" min="20" onchange="updateRC()"></label>
+<label>Folds \(k\) <input id="rcK" type="number" value="10" min="2" onchange="updateRC()"></label>
+<label>Repetitions \(r\) <input id="rcR" type="number" value="10" min="1" onchange="updateRC()"></label>
+</div>
+<div class="result-panel">
+<div class="statbox"><b>Models fitted</b><strong id="rcModels"></strong></div>
+<div class="statbox"><b>Train/model</b><strong id="rcTrain"></strong></div>
+<div class="statbox"><b>Test/model</b><strong id="rcTest"></strong></div>
+<div class="statbox"><b>Test predictions total</b><strong id="rcPred"></strong></div>
+</div>
+</div>
+</section>
+
+<section id="bootstrap" class="card lesson">
+<h2>Bootstrap, \(E_0\), and the .632 estimate</h2>
+<div class="badges"><span class="badge b-violet">SAMPLING WITH REPLACEMENT</span><span class="badge b-amber">OUT-OF-BAG TESTING</span><span class="badge b-blue">MANY MODELS</span></div>
+<table class="summary-table">
+<tr><th>Core idea</th><td>Treat the empirical dataset as an approximation to the population and simulate repeated samples by drawing with replacement.</td></tr>
+<tr><th>One bootstrap sample</th><td>Draw \(n\) positions from \(n\) observed cases with replacement. Size is \(n\), but unique cases are about \(0.632n\).</td></tr>
+<tr><th>Out-of-bag (OOB)</th><td>Original cases not selected in that bootstrap sample—about \(0.368n\)—act as test cases.</td></tr>
+<tr><th>Does it create information?</th><td>No. It simulates sampling variability using the empirical distribution.</td></tr>
+<tr><th>Main assumption</th><td>The observed sample is representative enough that its empirical distribution approximates the target population.</td></tr>
+</table>
+
+<div class="controls">
+<label>Dataset size \(n\) <input id="bootN" type="range" min="20" max="2000" step="20" value="1000" oninput="updateBootstrap()"></label>
+<span id="bootNVal" class="slider-value"></span>
+<label>Repetitions \(B\) <input id="bootB" type="range" min="10" max="1000" step="10" value="200" oninput="updateBootstrap()"></label>
+<span id="bootBVal" class="slider-value"></span>
+<label>Resub error <input id="bootResub" type="range" min="0" max="40" step="1" value="4" oninput="updateBootstrap()"></label>
+<span id="bootResubVal" class="slider-value"></span>
+<label>OOB \(E_0\) error <input id="bootE0" type="range" min="0" max="50" step="1" value="20" oninput="updateBootstrap()"></label>
+<span id="bootE0Val" class="slider-value"></span>
+</div>
+<div class="result-panel">
+<div class="statbox"><b>Bootstrap positions</b><strong id="bootPositions"></strong></div>
+<div class="statbox"><b>Expected unique train</b><strong id="bootUnique"></strong></div>
+<div class="statbox"><b>Expected OOB</b><strong id="bootOOB"></strong></div>
+<div class="statbox"><b>.632 error</b><strong id="boot632"></strong></div>
+</div>
+
+<div class="tabs" data-tabs="boot">
+<button class="tab active" data-pane="boot-why">Why 63.2%?</button>
+<button class="tab" data-pane="boot-e0">\(E_0\) procedure</button>
+<button class="tab" data-pane="boot-632">.632 procedure</button>
+<button class="tab" data-pane="boot-small">Why small data?</button>
+<button class="tab" data-pane="boot-bias">Bias & variance</button>
+</div>
+
+<div id="boot-why" class="tabpane active">
+<p>For one original observation, probability of not being selected on one draw is \(1-1/n\). After \(n\) draws:</p>
+<div class="mathbox">\[
+P(\text{not selected})=\left(1-\frac{1}{n}\right)^n\longrightarrow e^{-1}\approx0.368.
+\]</div>
+<div class="mathbox">\[
+P(\text{selected at least once})\approx1-0.368=0.632.
+\]</div>
+<div class="callout warn">“After \(n\) samples” in the slide means after \(n\) draws within one bootstrap dataset—not after \(n\) bootstrap repetitions.</div>
+</div>
+
+<div id="boot-e0" class="tabpane">
+<ol>
+<li>For \(b=1,\ldots,B\), draw bootstrap training sample \(D_b^*\) of \(n\) positions with replacement.</li>
+<li>Train model \(f_b\) on \(D_b^*\).</li>
+<li>Test on OOB set \(O_b\).</li>
+<li>Compute \(e_{0b}\), then average.</li>
+</ol>
+<div class="mathbox">\[
+E_0=\frac{1}{B}\sum_{b=1}^{B}e_{0b}.
+\]</div>
+<div class="callout warn">\(E_0\) can be pessimistic relative to a final model trained on all unique data because each bootstrap model sees only about 63.2% unique cases.</div>
+</div>
+
+<div id="boot-632" class="tabpane">
+<p>Compute resubstitution error—usually once—then combine it with the repeated OOB estimate:</p>
+<div class="mathbox">\[
+E_{.632}=0.368E_{\mathrm{resub}}+0.632E_0.
+\]</div>
+<div class="callout">
+  Repeated many times: bootstrap/OOB component. Usually computed once: full-data resubstitution error.
+  The method combines optimistic training error with often pessimistic OOB error.
+</div>
+</div>
+
+<div id="boot-small" class="tabpane">
+<p>Bootstrap is attractive when a permanent hold-out would leave too few observations for both training and testing. It generates many pseudo-training/OOB arrangements from one small dataset.</p>
+<div class="callout warn">It does not solve a nonrepresentative original sample. If important subpopulations are absent, bootstrap cannot invent them.</div>
+</div>
+
+<div id="boot-bias" class="tabpane">
+<div class="grid3">
+<div class="mini"><b>Variance</b><p>Averaging many repetitions reduces Monte Carlo variability of the bootstrap estimate, although resamples are dependent through the same dataset.</p></div>
+<div class="mini"><b>\(E_0\) bias</b><p>Fewer unique training cases can make bootstrap models worse than a full-data target model.</p></div>
+<div class="mini"><b>.632 correction</b><p>Balances pessimistic OOB behavior against optimistic re-substitution behavior.</p></div>
+</div>
+<div class="callout bad">A one-shot bootstrap repetition is not automatically better than hold-out. The bootstrap method is the repeated procedure plus its interpretation/correction.</div>
+</div>
+</section>
+
+<section id="randomization" class="card lesson">
+<h2>Randomization and permutation</h2>
+<div class="grid2">
+<div class="mini">
+<b>Randomization over labels</b>
+<p>Shuffle labels to destroy the feature–label relationship. Ask whether the real score is much better than scores obtainable under chance assignments.</p>
+</div>
+<div class="mini">
+<b>Randomization over samples/order</b>
+<p>Reorder samples or alter split assignments to assess estimate stability. Pure row order should not affect deterministic batch learners, but can matter for online learning, SGD, order-sensitive preprocessing, or fold construction.</p>
+</div>
+</div>
+<div class="callout warn">Permutation/randomization belongs partly to significance testing rather than plain point error estimation. Its role in the tutorial’s hierarchy is as a resampling-based evaluation tool.</div>
+</section>
+
+<section id="structured" class="card lesson">
+<h2>Temporal, grouped and spatial validation</h2>
+<p class="lead">The correct sampling unit is determined by deployment—not by convenience.</p>
+<div class="grid3">
+<div class="mini"><b>Time split</b><p>Train on past, test on future. Estimates forecasting/generalization through time.</p></div>
+<div class="mini"><b>Group/person split</b><p>Keep all observations from one patient/user/subject together. Estimates unseen-group generalization.</p></div>
+<div class="mini"><b>Location split</b><p>Hold out whole regions/sites. Estimates generalization to unseen locations and reduces spatial leakage.</p></div>
+</div>
+<div class="callout">
+  These are not automatically “OOD.” If future patients/regions are part of the intended target population, the split may simply be a more faithful in-distribution deployment simulation.
+  It becomes distribution-shift/OOD evaluation when the held-out groups have mechanisms or characteristics not represented in training.
+</div>
+<div class="table-wrap">
+<table class="compare">
+<thead><tr><th>Split</th><th>Unit assigned to folds</th><th>Question answered</th><th>Common leakage prevented</th></tr></thead>
+<tbody>
+<tr><td>Random IID</td><td>Individual row/example</td><td>New similar example</td><td>Only direct row overlap</td></tr>
+<tr><td>GroupKFold / leave-one-person-out</td><td>Whole person/group</td><td>New person/group</td><td>Identity-specific patterns crossing train/test</td></tr>
+<tr><td>Blocked time split</td><td>Chronological block</td><td>Future period</td><td>Future information entering past predictions</td></tr>
+<tr><td>Rolling-origin</td><td>Increasing historical window</td><td>Repeated future forecasting</td><td>Unrealistic random temporal mixing</td></tr>
+<tr><td>Leave-location-out</td><td>Whole site/region</td><td>New site/region</td><td>Spatial neighbors appearing in both sets</td></tr>
+</tbody>
+</table>
+</div>
+</section>
+
+<section id="leakage" class="card lesson">
+<h2>Leakage laboratory: overlapping time windows</h2>
+<p class="lead">Your example contains two related problems: future leakage and dependence from overlapping windows.</p>
+<div class="controls">
+<label>Window length <input id="lgWin" type="range" min="3" max="12" value="10" step="1" oninput="updateLeakage()"></label><span id="lgWinVal" class="slider-value"></span>
+<label>Test target year <input id="lgYear" type="range" min="2005" max="2020" value="2011" step="1" oninput="updateLeakage()"></label><span id="lgYearVal" class="slider-value"></span>
+</div>
+<div id="leakDemo"></div>
+<div class="callout bad"><b>Future leakage:</b> if a training example uses observations at or after the test target time, the model has information unavailable at the real prediction moment.</div>
+<div class="callout warn"><b>Overlap dependence:</b> even without a future target crossing, neighboring rolling windows can share most timestamps. Randomly placing them into train and test makes the test artificially similar to training.</div>
+<div class="callout good"><b>Safe rule:</b> for test target \(t\), every feature used in training/evaluation must be information that would have been available before \(t\), and folds should respect temporal blocks/gaps when overlapping windows create dependence.</div>
+</section>
+
+<section id="selector" class="card lesson">
+<h2>Interactive method selector</h2>
+<p class="lead">Choose the deployment/data constraints. The recommendation is a starting point, not an automatic law.</p>
+<div class="controls">
+<label>Dataset size
+<select id="selSize" onchange="updateSelector()"><option value="small">Small</option><option value="medium" selected>Medium</option><option value="large">Large</option></select>
+</label>
+<label>Dependence
+<select id="selDep" onchange="updateSelector()"><option value="iid" selected>Approximately IID</option><option value="class">Class imbalance</option><option value="group">Grouped/person</option><option value="time">Time series</option><option value="space">Spatial/location</option></select>
+</label>
+<label>Training cost
+<select id="selCost" onchange="updateSelector()"><option value="low">Low</option><option value="medium" selected>Medium</option><option value="high">High</option></select>
+</label>
+<label>Goal
+<select id="selGoal" onchange="updateSelector()"><option value="final">Final clean estimate</option><option value="compare">Compare/tune algorithms</option><option value="variance">Study instability</option></select>
+</label>
+<label>Expected error
+<select id="selErr" onchange="updateSelector()"><option value="normal" selected>Moderate</option><option value="low">Very low</option><option value="high">High</option></select>
+</label>
+</div>
+<div id="selectorPipeline" class="pipeline"></div>
+<div id="selectorAdvice" class="callout"></div>
+
+<h3>Criteria in detail</h3>
+<div class="grid2">
+<div class="mini"><b>Domain / dependence</b><p>Choose splits that preserve the real independence structure. Random splitting is inappropriate when rows share patients, times, devices, or locations.</p></div>
+<div class="mini"><b>Dataset size</b><p>Large data can afford untouched hold-out. Small data pushes toward CV/bootstrap because a fixed test set consumes scarce training information.</p></div>
+<div class="mini"><b>Bias–variance</b><p>Small training folds may pessimistically evaluate the final model; small test folds increase variance of the estimate.</p></div>
+<div class="mini"><b>Expected true error</b><p>Very low error requires enough test cases to observe failures. Zero observed errors does not imply zero true risk.</p></div>
+<div class="mini"><b>Algorithm type</b><p>Duplicates act as weights in bootstrap. Order-sensitive algorithms can react to permutations. Expensive algorithms restrict repetition count.</p></div>
+<div class="mini"><b>Computational cost</b><p>Hold-out fits once, \(k\)-fold fits \(k\) times, 10×10 fits 100 times, LOO fits \(n\) times, bootstrap fits \(B\) times.</p></div>
+</div>
+</section>
+
+<section id="simulator" class="card lesson">
+<h2>Split and model simulator</h2>
+<p class="lead">Each row is one newly fitted model/evaluation. The drawing truncates very long procedures.</p>
+<div class="controls">
+<label>Dataset size \(n\) <input id="simN" type="number" value="1000" min="20" onchange="updateSimulator()"></label>
+<label>Method
+<select id="simMethod" onchange="updateSimulator()">
+<option value="holdout">Hold-out 70/30</option>
+<option value="cv2">2-fold CV</option>
+<option value="cv5">5-fold CV</option>
+<option value="cv10">10-fold CV</option>
+<option value="loo">Leave-one-out</option>
+<option value="random">Repeated hold-out ×10</option>
+<option value="5x2">5×2CV</option>
+<option value="10x10">10×10CV</option>
+<option value="e0">E0 bootstrap ×200</option>
+<option value="632">.632 bootstrap ×200</option>
+</select>
+</label>
+</div>
+<div id="simRows"></div>
+<div class="legend">
+<span><i style="background:#60a5fa"></i>Training</span>
+<span><i style="background:#fb923c"></i>Test</span>
+<span><i style="background:#f59e0b"></i>Out-of-bag</span>
+<span><i style="background:#e2e8f0"></i>Not shown / unused</span>
+</div>
+<div class="result-panel">
+<div class="statbox"><b>Models fitted</b><strong id="simModels"></strong></div>
+<div class="statbox"><b>Train size/model</b><strong id="simTrain"></strong></div>
+<div class="statbox"><b>Test size/model</b><strong id="simTest"></strong></div>
+<div class="statbox"><b>What is averaged?</b><strong id="simAvg"></strong></div>
+</div>
+</section>
+
+<section id="comparison" class="card lesson">
+<h2>Master comparison table</h2>
+<div class="table-wrap">
+<table class="compare">
+<thead><tr>
+<th>Method</th><th>Models</th><th>Train/model</th><th>Test evidence</th><th>Natural target</th>
+<th>Bias issue</th><th>Variance/dependence issue</th><th>Best use</th>
+</tr></thead>
+<tbody>
+<tr><td>Re-substitution</td><td>1</td><td>100%</td><td>Same training data</td><td>Training error</td><td>Strong optimistic bias</td><td>Looks stable but invalid for future error</td><td>Diagnostics only</td></tr>
+<tr><td>Hold-out</td><td>1</td><td>Chosen fraction</td><td>One independent test sample</td><td>Specific model trained on \(S\)</td><td>Can be pessimistic relative to full-data final model</td><td>High split variance if test small</td><td>Large datasets, final untouched test</td></tr>
+<tr><td>k-fold CV</td><td>\(k\)</td><td>\((k-1)/k\)</td><td>Every case tested once</td><td>Algorithm trained on fold-size samples</td><td>Training-size mismatch</td><td>Overlapping training sets</td><td>General-purpose moderate/small data</td></tr>
+<tr><td>Stratified CV</td><td>\(k\)</td><td>\((k-1)/k\)</td><td>Class-balanced folds</td><td>Same as CV</td><td>Same as CV</td><td>Less fold-composition variance</td><td>Classification, imbalance</td></tr>
+<tr><td>LOO</td><td>\(n\)</td><td>\(n-1\)</td><td>One case per test fold</td><td>Algorithm trained on \(n-1\)</td><td>Small training-size bias</td><td>Potentially high variance/correlation; expensive</td><td>Moderate \(n\), cheap learner</td></tr>
+<tr><td>Repeated hold-out</td><td>\(r\)</td><td>Chosen fraction</td><td>Overlapping random test sets</td><td>Average over split distribution</td><td>Depends on training fraction</td><td>Repeated scores correlated</td><td>Split-sensitivity analysis</td></tr>
+<tr><td>5×2CV</td><td>10</td><td>50%</td><td>Complementary halves ×5</td><td>Algorithm under half-data training</td><td>Often pessimistic vs full-data model</td><td>Structured dependence</td><td>Historical two-classifier test design</td></tr>
+<tr><td>10×10CV</td><td>100</td><td>90%</td><td>100 fold evaluations</td><td>Repeated average algorithm behavior</td><td>Small training-size mismatch</td><td>Scores not independent</td><td>Stable descriptive estimate when affordable</td></tr>
+<tr><td>\(E_0\) bootstrap</td><td>\(B\)</td><td>\(n\) positions, ~63.2% unique</td><td>~36.8% OOB/run</td><td>Bootstrap/OOB performance</td><td>Often pessimistic vs full unique-data model</td><td>Dependent pseudo-samples</td><td>Small data, variability study</td></tr>
+<tr><td>.632 bootstrap</td><td>\(B\)+resub</td><td>Bootstrap plus full-data fit</td><td>OOB + training error</td><td>Bias-corrected bootstrap estimate</td><td>Balances opposite biases</td><td>Still empirical-sample dependent</td><td>Small-data corrected estimate</td></tr>
+<tr><td>Time/group/location split</td><td>Design dependent</td><td>Structure dependent</td><td>Future/new group/new location</td><td>Deployment-specific generalization</td><td>May be harder but more realistic</td><td>Fewer independent groups/periods</td><td>Dependent/structured data</td></tr>
+</tbody>
+</table>
+</div>
+</section>
+
+<section id="exam" class="card lesson">
+<h2>Exam insights and common traps</h2>
+<div class="grid3">
+<div class="mini"><b>Trap 1: “sample”</b><p>Name whether you mean observed dataset, fold, bootstrap dataset, test sample, or one draw.</p></div>
+<div class="mini"><b>Trap 2: CV models</b><p>\(k\)-fold CV fits \(k\) models; it does not test one model \(k\) times.</p></div>
+<div class="mini"><b>Trap 3: estimator target</b><p>Call something optimistic/pessimistic only relative to a stated target.</p></div>
+<div class="mini"><b>Trap 4: variance</b><p>Small test sets increase variance of the error estimator, not necessarily model variance.</p></div>
+<div class="mini"><b>Trap 5: stratification</b><p>Preserving class proportions does not prevent patient/time/location leakage.</p></div>
+<div class="mini"><b>Trap 6: bootstrap</b><p>\(n\) bootstrap positions do not mean \(n\) unique observations.</p></div>
+<div class="mini"><b>Trap 7: confidence intervals</b><p>Hold-out has a clean fixed-model Bernoulli interpretation; CV fold dependence makes simple rigorous CIs harder.</p></div>
+<div class="mini"><b>Trap 8: OOD language</b><p>Unseen group is not automatically OOD; define the target population and deployment question.</p></div>
+<div class="mini"><b>Trap 9: temporal windows</b><p>Overlapping windows create dependence even when the exact window is absent from training.</p></div>
+</div>
+<div class="callout good">
+<b>Strong oral-exam answer structure:</b>
+(1) state the target population and deployment scenario;
+(2) name the independent unit;
+(3) describe how train/test sets are formed;
+(4) state how many models are trained;
+(5) define the estimator and its target;
+(6) distinguish estimator bias, estimator variance, model bias, and model variance;
+(7) mention leakage/dependence and computation.
+</div>
+<div class="source-note">
+Built to mirror the structure and interaction style of the supplied significance-testing textbook while focusing on the tutorial’s error-estimation/resampling material and the clarifications developed in this discussion.
+</div>
+</section>
+
+</main>
+</div>
+
+<script>
+/* ---------- navigation ---------- */
+const navButtons=[...document.querySelectorAll('.nav-btn')];
+const lessons=[...document.querySelectorAll('.lesson')];
+function activate(id){
+  lessons.forEach(s=>s.classList.toggle('active',s.id===id));
+  navButtons.forEach(b=>b.classList.toggle('active',b.dataset.target===id));
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+navButtons.forEach(b=>b.addEventListener('click',()=>activate(b.dataset.target)));
+document.querySelectorAll('[data-jump]').forEach(n=>n.addEventListener('click',()=>activate(n.dataset.jump)));
+
+/* ---------- tabs ---------- */
+document.querySelectorAll('.tabs').forEach(tabset=>{
+  tabset.querySelectorAll('.tab').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const pane=btn.dataset.pane;
+      tabset.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+      btn.classList.add('active');
+      const scope=tabset.parentElement;
+      scope.querySelectorAll(':scope > .tabpane').forEach(p=>p.classList.toggle('active',p.id===pane));
+    });
+  });
+});
+
+/* ---------- helpers ---------- */
+function clamp(x,a,b){return Math.max(a,Math.min(b,x))}
+function zFor(conf){
+  const z={80:1.282,81:1.310,82:1.341,83:1.372,84:1.405,85:1.440,86:1.476,87:1.514,88:1.555,89:1.598,90:1.645,91:1.695,92:1.751,93:1.812,94:1.881,95:1.960,96:2.054,97:2.170,98:2.326,99:2.576};
+  return z[conf]||1.96;
+}
+function logGamma(z){
+  const c=[676.5203681218851,-1259.1392167224028,771.32342877765313,-176.61502916214059,12.507343278686905,-0.13857109526572012,9.9843695780195716e-6,1.5056327351493116e-7];
+  if(z<0.5)return Math.log(Math.PI)-Math.log(Math.sin(Math.PI*z))-logGamma(1-z);
+  z-=1;let x=0.99999999999980993;
+  for(let i=0;i<c.length;i++)x+=c[i]/(z+i+1);
+  const t=z+c.length-0.5;
+  return 0.5*Math.log(2*Math.PI)+(z+0.5)*Math.log(t)-t+Math.log(x);
+}
+function logChoose(n,k){return logGamma(n+1)-logGamma(k+1)-logGamma(n-k+1)}
+function binomPMF(k,n,p){
+  if(p<=0)return k===0?1:0;if(p>=1)return k===n?1:0;
+  return Math.exp(logChoose(n,k)+k*Math.log(p)+(n-k)*Math.log(1-p));
+}
+function binomCDF(k,n,p){
+  if(k<0)return 0;if(k>=n)return 1;
+  let s=0;
+  for(let i=0;i<=k;i++)s+=binomPMF(i,n,p);
+  return clamp(s,0,1);
+}
+function exactBinomialCI(k,n,alpha){
+  if(n<=0)return [0,1];
+  let lo=0,hi=1;
+  if(k>0){
+    let a=0,b=k/n;
+    for(let it=0;it<55;it++){
+      let mid=(a+b)/2;
+      // lower bound solves P(X >= k | p)=alpha/2 => P(X <= k-1)=1-alpha/2
+      let val=binomCDF(k-1,n,mid);
+      if(val>1-alpha/2)a=mid; else b=mid;
+    }
+    lo=(a+b)/2;
+  }
+  if(k<n){
+    let a=k/n,b=1;
+    for(let it=0;it<55;it++){
+      let mid=(a+b)/2;
+      // upper bound solves P(X <= k | p)=alpha/2
+      let val=binomCDF(k,n,mid);
+      if(val>alpha/2)a=mid; else b=mid;
+    }
+    hi=(a+b)/2;
+  }
+  return [clamp(lo,0,1),clamp(hi,0,1)];
+}
+function svgEl(name,attrs={}){
+  const e=document.createElementNS('http://www.w3.org/2000/svg',name);
+  Object.entries(attrs).forEach(([k,v])=>e.setAttribute(k,v));
+  return e;
+}
+function addSvgText(svg,x,y,text,fill='#334155',size=12){
+  const e=svgEl('text',{x,y,fill,'font-size':size});
+  e.textContent=text;svg.appendChild(e);
+}
+function normalPDF(x,mu,sd){return Math.exp(-.5*((x-mu)/sd)**2)/(sd*Math.sqrt(2*Math.PI))}
+
+/* ---------- need for resampling ---------- */
+function updateNeed(){
+  const n=+needN.value, frac=+needFrac.value/100;
+  const tr=Math.round(n*frac),te=n-tr;
+  needNVal.textContent=n;needFracVal.textContent=Math.round(frac*100)+'%';
+  needTrain.textContent=tr;needTest.textContent=te;
+  needStep.textContent=(100/te).toFixed(2)+' pp';
+  needPressure.textContent=tr<100?'high':tr<n*.6?'moderate':'lower';
+  needBar.innerHTML=`<div class="split-row"><div class="split-label">one hold-out split</div><div class="split-bar"><div class="trainseg" style="width:${100*tr/n}%"></div><div class="testseg" style="width:${100*te/n}%"></div></div></div><div class="legend"><span><i style="background:#60a5fa"></i>train ${tr}</span><span><i style="background:#fb923c"></i>test ${te}</span></div>`;
+}
+
+/* ---------- uncertainty ---------- */
+function updateUncertainty(){
+  const m=+uM.value;
+  uK.max=m;
+  let k=+uK.value;if(k>m){k=m;uK.value=m}
+  const conf=+uConf.value,delta=1-conf/100,desired=+uDesired.value/100;
+  const phat=k/m;
+  const se=Math.sqrt(Math.max(phat*(1-phat)/m,0));
+  const z=zFor(conf);
+  const gl=clamp(phat-z*se,0,1),gu=clamp(phat+z*se,0,1);
+  const exact=exactBinomialCI(k,m,delta);
+  const eps=Math.sqrt(Math.log(2/delta)/(2*m));
+  const hl=clamp(phat-eps,0,1),hu=clamp(phat+eps,0,1);
+  const req=Math.ceil(Math.log(2/delta)/(2*desired*desired));
+  uMVal.textContent=m;uKVal.textContent=k;uConfVal.textContent=conf+'%';uDesiredVal.textContent=(100*desired).toFixed(0)+'%';
+  uP.textContent=phat.toFixed(4);
+  uGauss.textContent=`[${gl.toFixed(3)}, ${gu.toFixed(3)}]`;
+  uExact.textContent=`[${exact[0].toFixed(3)}, ${exact[1].toFixed(3)}]`;
+  uHoeff.textContent=`[${hl.toFixed(3)}, ${hu.toFixed(3)}]`;
+  uSE.textContent=se.toFixed(4);uHEps.textContent=eps.toFixed(4);uReq.textContent=req;uOne.textContent=(100/m).toFixed(2)+' pp';
+
+  const svg=uPlot;svg.innerHTML='';
+  const W=900,H=440,L=55,R=25,T=30,B=55;
+  const xs=x=>L+x*(W-L-R),ys=y=>H-B-y*(H-T-B);
+  svg.appendChild(svgEl('line',{x1:L,y1:H-B,x2:W-R,y2:H-B,stroke:'#94a3b8'}));
+  svg.appendChild(svgEl('line',{x1:L,y1:T,x2:L,y2:H-B,stroke:'#94a3b8'}));
+  for(let i=0;i<=10;i++){
+    svg.appendChild(svgEl('line',{x1:xs(i/10),y1:H-B,x2:xs(i/10),y2:H-B+5,stroke:'#94a3b8'}));
+    addSvgText(svg,xs(i/10)-10,H-B+22,(i/10).toFixed(1));
+  }
+  addSvgText(svg,W/2-40,H-12,'error rate', '#334155',13);
+
+  const pVis=clamp(phat,1e-6,1-1e-6);
+  let probs=[],maxP=0;
+  for(let kk=0;kk<=m;kk++){const v=binomPMF(kk,m,pVis);probs.push(v);maxP=Math.max(maxP,v)}
+  const step=Math.max(1,Math.floor(m/180));
+  for(let kk=0;kk<=m;kk+=step){
+    const x=kk/m,pr=probs[kk],bw=Math.max(1,(W-L-R)/m*step*.75),y=ys((pr/maxP)*.78);
+    svg.appendChild(svgEl('rect',{x:xs(x)-bw/2,y,width:bw,height:H-B-y,fill:'#ea580c',opacity:.42}));
+  }
+  if(se>1e-8){
+    const peak=normalPDF(phat,phat,se);let pts=[];
+    for(let i=0;i<=450;i++){const x=i/450,y=normalPDF(x,phat,se)/peak*.78;pts.push(`${xs(x)},${ys(y)}`)}
+    svg.appendChild(svgEl('polyline',{points:pts.join(' '),fill:'none',stroke:'#2563eb','stroke-width':3}));
+  }
+  svg.appendChild(svgEl('line',{x1:xs(phat),y1:T,x2:xs(phat),y2:H-B,stroke:'#059669','stroke-width':3}));
+  addSvgText(svg,xs(phat)+5,T+16,'observed p̂','#059669',13);
+  svg.appendChild(svgEl('line',{x1:xs(gl),y1:H-B-14,x2:xs(gu),y2:H-B-14,stroke:'#2563eb','stroke-width':7}));
+  addSvgText(svg,xs(gl),H-B-20,'Gaussian','#2563eb');
+  svg.appendChild(svgEl('line',{x1:xs(exact[0]),y1:H-B-34,x2:xs(exact[1]),y2:H-B-34,stroke:'#ea580c','stroke-width':7}));
+  addSvgText(svg,xs(exact[0]),H-B-40,'Exact binomial','#b45309');
+  svg.appendChild(svgEl('line',{x1:xs(hl),y1:H-B-54,x2:xs(hu),y2:H-B-54,stroke:'#dc2626','stroke-width':7}));
+  addSvgText(svg,xs(hl),H-B-60,'Hoeffding','#dc2626');
+}
+
+/* ---------- kfold ---------- */
+function renderKfold(){
+  const n=100,k=5,fold=n/k;
+  let html='<div class="callout"><b>Example:</b> 5-fold CV on 100 observations. Every row is a newly trained model.</div>';
+  for(let i=0;i<k;i++){
+    html+=`<div class="split-row"><div class="split-label">model ${i+1}</div><div class="split-bar">`;
+    for(let j=0;j<k;j++)html+=`<div class="${i===j?'testseg':'trainseg'}" style="width:${100/k}%"></div>`;
+    html+='</div></div>';
+  }
+  html+='<div class="legend"><span><i style="background:#60a5fa"></i>train</span><span><i style="background:#fb923c"></i>test fold</span></div>';
+  kfoldDemo.innerHTML=html;
+}
+
+/* ---------- stratification ---------- */
+function updateStrat(){
+  const p=+stPos.value,n=+stNeg.value,k=+stK.value;
+  stPosVal.textContent=p;stNegVal.textContent=n;stKVal.textContent=k;
+  const pp=(p/k).toFixed(1),nn=(n/k).toFixed(1);
+  let html=`<div class="callout"><b>Expected stratified fold:</b> about ${pp} positives and ${nn} negatives per fold.</div>`;
+  html+='<div class="grid2"><div class="mini"><b>Without stratification</b><p>Random variation can produce folds with far fewer minority examples, especially when the expected count per fold is small.</p></div>';
+  html+='<div class="mini"><b>With stratification</b><p>Assignment is constrained so each fold approximates the overall class ratio.</p></div></div>';
+  if(p/k<2)html+='<div class="callout bad"><b>Warning:</b> fewer than two positives expected per fold. Even stratification cannot create enough minority observations; reduce \(k\) or collect more data.</div>';
+  stratDemo.innerHTML=html;
+}
+
+/* ---------- repeated CV calculator ---------- */
+function updateRC(){
+  const n=+rcN.value,k=Math.max(2,+rcK.value),r=Math.max(1,+rcR.value);
+  rcModels.textContent=k*r;
+  rcTrain.textContent=Math.round(n*(k-1)/k);
+  rcTest.textContent=Math.round(n/k);
+  rcPred.textContent=n*r;
+}
+
+/* ---------- bootstrap ---------- */
+function updateBootstrap(){
+  const n=+bootN.value,B=+bootB.value,res=+bootResub.value/100,e0=+bootE0.value/100;
+  bootNVal.textContent=n;bootBVal.textContent=B;bootResubVal.textContent=(100*res).toFixed(0)+'%';bootE0Val.textContent=(100*e0).toFixed(0)+'%';
+  bootPositions.textContent=n;
+  bootUnique.textContent='≈ '+Math.round(.632*n);
+  bootOOB.textContent='≈ '+Math.round(.368*n);
+  boot632.textContent=(100*(.368*res+.632*e0)).toFixed(2)+'%';
+}
+
+/* ---------- leakage ---------- */
+function updateLeakage(){
+  const w=+lgWin.value,t=+lgYear.value;lgWinVal.textContent=w;lgYearVal.textContent=t;
+  const start=t-w,end=t-1;
+  const train1Start=start-1,train1End=end-1,train1Target=t-1;
+  const train2Start=start+1,train2End=end+1,train2Target=t+1;
+  leakDemo.innerHTML=`
+  <div class="table-wrap"><table class="compare"><thead><tr><th>Role</th><th>Input window</th><th>Target</th><th>Problem</th></tr></thead><tbody>
+  <tr><td>Training neighbor before</td><td>${train1Start}–${train1End}</td><td>${train1Target}</td><td>Shares ${w-1} of ${w} timestamps with test input.</td></tr>
+  <tr><td>Test example</td><td>${start}–${end}</td><td>${t}</td><td>Prediction moment is ${t}.</td></tr>
+  <tr><td>Training neighbor after</td><td>${train2Start}–${train2End}</td><td>${train2Target}</td><td>Uses year ${t} inside training features and target ${t+1}: future leakage relative to predicting ${t}.</td></tr>
+  </tbody></table></div>`;
+}
+
+/* ---------- selector ---------- */
+function updateSelector(){
+  const size=selSize.value,dep=selDep.value,cost=selCost.value,goal=selGoal.value,err=selErr.value;
+  let method='',reason='',warn='';
+  if(dep==='time'){method='blocked / rolling-origin temporal validation';reason='The test must occur after training data in time.';warn='Use gaps when rolling windows overlap strongly.'}
+  else if(dep==='group'){method='GroupKFold or leave-one-group/person-out';reason='All observations from one group must remain together.';warn='Stratification alone does not prevent identity leakage.'}
+  else if(dep==='space'){method='spatial blocks or leave-location-out';reason='Nearby observations may be too similar for random splitting.';warn='Decide whether the target is new points in known regions or entirely new regions.'}
+  else if(size==='large'&&goal==='final'){method='large untouched hold-out';reason='Enough data exist for both strong training and precise independent testing.';warn='Do not tune repeatedly on the final test set.'}
+  else if(size==='small'&&cost!=='high'){method=goal==='variance'?'bootstrap plus repeated CV':'stratified k-fold CV, possibly repeated';reason='A permanent test set would consume scarce data.';warn='Use group/time-aware variants if observations are dependent.'}
+  else if(cost==='high'){method='single stratified hold-out or small-k CV';reason='Computation limits the number of model fits.';warn='Report larger split uncertainty and consider a larger test fraction if possible.'}
+  else {method='stratified 5- or 10-fold CV';reason='General compromise between training size, testing coverage, and cost.';warn='Fold scores overlap through their training sets.'}
+  if(err==='low')warn+=' Very low error requires a large test set to observe enough failures.';
+  selectorPipeline.innerHTML=`<div class="pipe"><b>Data structure</b><br>${dep}</div><div class="arr">→</div><div class="pipe"><b>Dataset / cost</b><br>${size}, ${cost} cost</div><div class="arr">→</div><div class="pipe"><b>Recommended direction</b><br>${method}</div>`;
+  selectorAdvice.innerHTML=`<b>Why:</b> ${reason}<br><b>Watch out:</b> ${warn}`;
+}
+
+/* ---------- simulator ---------- */
+function addSplitRow(container,label,segments){
+  const row=document.createElement('div');row.className='split-row';
+  const lab=document.createElement('div');lab.className='split-label';lab.textContent=label;
+  const bar=document.createElement('div');bar.className='split-bar';
+  segments.forEach(s=>{const d=document.createElement('div');d.className=s.cls;d.style.width=s.w+'%';bar.appendChild(d)});
+  row.append(lab,bar);container.appendChild(row);
+}
+function updateSimulator(){
+  const n=Math.max(20,+simN.value),m=simMethod.value;
+  simRows.innerHTML='';
+  let models,train,test,avg;
+  if(m==='holdout'){
+    models=1;train=Math.round(.7*n);test=n-train;avg='one test error';
+    addSplitRow(simRows,'model 1',[{cls:'trainseg',w:70},{cls:'testseg',w:30}]);
+  }else if(m==='cv2'){
+    models=2;train=Math.round(.5*n);test=n-train;avg='2 fold errors';
+    addSplitRow(simRows,'model 1: A→B',[{cls:'trainseg',w:50},{cls:'testseg',w:50}]);
+    addSplitRow(simRows,'model 2: B→A',[{cls:'testseg',w:50},{cls:'trainseg',w:50}]);
+  }else if(m==='cv5'||m==='cv10'){
+    const k=m==='cv5'?5:10;models=k;train=Math.round(n*(k-1)/k);test=Math.round(n/k);avg=`${k} fold errors`;
+    const shown=Math.min(k,5);
+    for(let i=0;i<shown;i++){
+      let seg=[];for(let j=0;j<k;j++)seg.push({cls:i===j?'testseg':'trainseg',w:100/k});
+      addSplitRow(simRows,`model ${i+1}`,seg);
+    }
+    if(k>shown)addSplitRow(simRows,`… ${k-shown} more models`,[{cls:'unusedseg',w:100}]);
+  }else if(m==='loo'){
+    models=n;train=n-1;test=1;avg=`${n} one-case losses`;
+    for(let i=0;i<4;i++)addSplitRow(simRows,`model ${i+1}`,[{cls:'testseg',w:1},{cls:'trainseg',w:99}]);
+    addSplitRow(simRows,`… ${n-4} more`,[{cls:'unusedseg',w:100}]);
+  }else if(m==='random'){
+    models=10;train=Math.round(.7*n);test=n-train;avg='10 repeated hold-out errors';
+    for(let i=0;i<5;i++){
+      const shift=(i*11)%30;
+      addSplitRow(simRows,`split ${i+1}`,[{cls:'trainseg',w:shift},{cls:'testseg',w:30},{cls:'trainseg',w:70-shift}]);
+    }
+    addSplitRow(simRows,'… 5 more splits',[{cls:'unusedseg',w:100}]);
+  }else if(m==='5x2'){
+    models=10;train=Math.round(.5*n);test=n-train;avg='10 fold errors in 5 complementary pairs';
+    for(let r=1;r<=5;r++){
+      addSplitRow(simRows,`rep ${r}, model A→B`,[{cls:'trainseg',w:50},{cls:'testseg',w:50}]);
+      addSplitRow(simRows,`rep ${r}, model B→A`,[{cls:'testseg',w:50},{cls:'trainseg',w:50}]);
+    }
+  }else if(m==='10x10'){
+    models=100;train=Math.round(.9*n);test=Math.round(.1*n);avg='100 fold errors / repeated averages';
+    for(let i=0;i<5;i++){
+      let seg=[];for(let j=0;j<10;j++)seg.push({cls:i===j?'testseg':'trainseg',w:10});
+      addSplitRow(simRows,`rep 1, fold ${i+1}`,seg);
+    }
+    addSplitRow(simRows,'… 95 more models',[{cls:'unusedseg',w:100}]);
+  }else if(m==='e0'){
+    models=200;train=`${n} positions, ≈${Math.round(.632*n)} unique`;test=`≈${Math.round(.368*n)} OOB`;avg='200 OOB errors';
+    for(let i=0;i<5;i++)addSplitRow(simRows,`bootstrap ${i+1}`,[{cls:'trainseg',w:63.2},{cls:'oobseg',w:36.8}]);
+    addSplitRow(simRows,'… 195 more',[{cls:'unusedseg',w:100}]);
+  }else{
+    models='200 bootstrap + 1 resub';train='bootstrap samples + full data';test='OOB plus training data';avg='.368 resub + .632 mean OOB';
+    addSplitRow(simRows,'resubstitution',[{cls:'trainseg',w:100}]);
+    for(let i=0;i<4;i++)addSplitRow(simRows,`bootstrap ${i+1}`,[{cls:'trainseg',w:63.2},{cls:'oobseg',w:36.8}]);
+    addSplitRow(simRows,'… 196 more',[{cls:'unusedseg',w:100}]);
+  }
+  simModels.textContent=models;simTrain.textContent=train;simTest.textContent=test;simAvg.textContent=avg;
+}
+
+/* ---------- init ---------- */
+updateNeed();
+updateUncertainty();
+renderKfold();
+updateStrat();
+updateRC();
+updateBootstrap();
+updateLeakage();
+updateSelector();
+updateSimulator();
+</script>
+</body>
+</html>

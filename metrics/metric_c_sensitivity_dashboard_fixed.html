@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Metric vs C Sensitivity Dashboard</title>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<script>window.MathJax={tex:{inlineMath:[['\\(','\\)'],['$','$']]}};</script>
+<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<style>
+body{font-family:Arial;margin:0;background:#f6f7fb;color:#222}header{background:#1f2937;color:#fff;padding:18px 24px}
+main{padding:16px}.controls,.panel{background:#fff;border-radius:12px;padding:14px;box-shadow:0 1px 6px #0002;margin-bottom:14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:14px}.metricCard{background:#fff;border-radius:12px;padding:13px;box-shadow:0 1px 6px #0002}
+.plot{height:330px}.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}.kpi{background:#eef2f7;padding:8px;border-radius:8px;text-align:center}.kpi b{display:block}
+label{font-weight:700;margin-right:8px}.metricChecks label{font-weight:400;display:inline-block;margin:4px 10px}.small{font-size:13px;color:#555}
+</style></head><body>
+<header><h2 style="margin:0">Metric Value and \(\partial M/\partial c\) Dashboard</h2><div class="small" style="color:#d1d5db">Each card shows a metric as c changes, its signed derivative, and summary sensitivity measures.</div></header>
+<main>
+<div class="controls">
+<div class="metricChecks">
+<label><input type="checkbox" value="accuracy" checked> Accuracy</label>
+<label><input type="checkbox" value="precision"> Precision</label>
+<label><input type="checkbox" value="f1" checked> F1</label>
+<label><input type="checkbox" value="g"> G-measure</label>
+<label><input type="checkbox" value="balanced" checked> Balanced accuracy</label>
+<label><input type="checkbox" value="youden"> Youden J</label>
+<label><input type="checkbox" value="wracc" checked> WRAcc</label>
+<label><input type="checkbox" value="npv"> NPV</label>
+<label><input type="checkbox" value="recall"> Recall / TPR</label>
+<label><input type="checkbox" value="specificity"> Specificity / TNR</label>
+<label><input type="checkbox" value="fpr"> FPR / Fallout</label>
+<label><input type="checkbox" value="fnr"> FNR / Miss rate</label>
+</div>
+<p><label>TPR <span id="yv"></span></label><input id="y" type="range" min="0.02" max="0.98" step="0.01" value="0.80"></p>
+<p><label>FPR <span id="xv"></span></label><input id="x" type="range" min="0.02" max="0.98" step="0.01" value="0.25"></p>
+<p><label>Selected c <span id="cv"></span></label><input id="csel" type="range" min="0.1" max="20" step="0.1" value="1"></p>
+<p><label>c range max <span id="cmaxv"></span></label><input id="cmax" type="range" min="2" max="50" step="1" value="10"></p>
+<p><label>Expected-sensitivity weighting</label>
+<select id="weight"><option value="uniform">Uniform over c range</option><option value="low">More weight on low c</option><option value="mid">More weight near selected c</option><option value="high">More weight on high c</option></select></p>
+<p><label><input id="showIso" type="checkbox" checked> Show ROC isometric panel below each metric</label></p>
+<div class="small">The two lines share one plot but use separate y-axes: metric value on the left, signed derivative on the right.</div>
+</div>
+<div id="cards" class="grid"></div>
+</main>
+<script>
+const names={accuracy:'Accuracy',precision:'Precision',f1:'F1',g:'G-measure',balanced:'Balanced accuracy',youden:'Youden J',wracc:'WRAcc',npv:'NPV',recall:'Recall / TPR',specificity:'Specificity / TNR',fpr:'FPR / Fallout',fnr:'FNR / Miss rate'};
+function M(k,x,y,c){if(k==='accuracy')return (y+c*(1-x))/(1+c);if(k==='precision')return y/(y+c*x);if(k==='f1')return 2*y/(y+c*x+1);if(k==='g')return y/(c*x+1);if(k==='balanced')return (y+1-x)/2;if(k==='youden')return y-x;if(k==='wracc')return 4*c/((1+c)*(1+c))*(y-x);if(k==='npv')return c*(1-x)/(c*(1-x)+(1-y));if(k==='recall')return y;if(k==='specificity')return 1-x;if(k==='fpr')return x;if(k==='fnr')return 1-y}
+function D(k,x,y,c){if(k==='accuracy')return ((1-x)-y)/((1+c)*(1+c));if(k==='precision')return -y*x/Math.pow(y+c*x,2);if(k==='f1')return -2*y*x/Math.pow(y+c*x+1,2);if(k==='g')return -y*x/Math.pow(c*x+1,2);if(k==='balanced'||k==='youden')return 0;if(k==='wracc')return 4*(1-c)*(y-x)/Math.pow(1+c,3);if(k==='npv'){const a=1-x,b=1-y;return a*b/Math.pow(c*a+b,2)}if(k==='recall'||k==='specificity'||k==='fpr'||k==='fnr')return 0}
+function S(k,x,y,c){if(k==='accuracy')return c;if(k==='precision')return y/x;if(k==='f1'||k==='g')return c*y/(c*x+1);if(k==='balanced'||k==='youden'||k==='wracc')return 1;if(k==='recall'||k==='fnr')return 0;if(k==='specificity'||k==='fpr')return Infinity;return NaN}
+function W(kind,c,sel,min,max){if(kind==='uniform')return 1;if(kind==='low')return 1/(c+.2);if(kind==='high')return c+.2;if(kind==='mid')return Math.exp(-Math.pow(c-sel,2)/(2*Math.pow((max-min)/7,2)))}
+function selected(){return [...document.querySelectorAll('.metricChecks input:checked')].map(e=>e.value)}
+
+function isoY(k,m,c,f){
+ if(k==='accuracy')return m*(1+c)-c*(1-f);
+ if(k==='precision')return m*c*f/(1-m);
+ if(k==='f1')return m*(c*f+1)/(2-m);
+ if(k==='g')return m*(c*f+1);
+ if(k==='balanced')return 2*m-1+f;
+ if(k==='youden')return m+f;
+ if(k==='wracc')return f+m*(1+c)*(1+c)/(4*c);
+ if(k==='recall')return m;
+ if(k==='fnr')return 1-m;
+ return NaN;
+}
+
+function update(){
+ const xx=+x.value,yy=+y.value,cs=+csel.value,cm=+cmax.value,kind=weight.value;
+ xv.textContent=xx.toFixed(2);yv.textContent=yy.toFixed(2);cv.textContent=cs.toFixed(2);cmaxv.textContent=cm.toFixed(0);
+ cards.innerHTML=selected().map(k=>`<div class="metricCard"><h3>${names[k]}</h3><div id="p_${k}" class="plot"></div><div id="k_${k}" class="kpis"></div><div id="iso_${k}" class="plot" style="display:${showIso.checked?'block':'none'}"></div></div>`).join('');
+ selected().forEach(k=>{
+   const csx=Array.from({length:400},(_,i)=>.1+i*(cm-.1)/399), vals=csx.map(c=>M(k,xx,yy,c)), der=csx.map(c=>D(k,xx,yy,c)), abs=der.map(Math.abs);
+   let integ=0,wSum=0,wSens=0;for(let i=1;i<csx.length;i++){const dc=csx[i]-csx[i-1];integ+=(abs[i]+abs[i-1])*dc/2;}
+   csx.forEach((c,i)=>{const w=W(kind,c,cs,.1,cm);wSum+=w;wSens+=w*abs[i]});
+   const avg=integ/(cm-.1),worst=Math.max(...abs),expected=wSens/wSum,local=D(k,xx,yy,cs),mv=M(k,xx,yy,cs),elastic=(Math.abs(mv)>1e-12)?Math.abs(cs/mv*local):NaN;
+   document.getElementById(`k_${k}`).innerHTML=
+   `<div class='kpi'>Metric @ c<b>${mv.toFixed(4)}</b></div>
+    <div class='kpi'>Effective slope<b>${Number.isFinite(S(k,xx,yy,cs))?S(k,xx,yy,cs).toFixed(4):'n/a'}</b></div>
+    <div class='kpi'>Local derivative<b>${local.toFixed(4)}</b></div>
+    <div class='kpi'>Average |D|<b>${avg.toFixed(4)}</b></div>
+    <div class='kpi'>Expected |D|<b>${expected.toFixed(4)}</b></div>
+    <div class='kpi'>Worst-case |D|<b>${worst.toFixed(4)}</b></div>
+    <div class='kpi'>Integrated |D|<b>${integ.toFixed(4)}</b></div>
+    <div class='kpi'>Elasticity<b>${Number.isFinite(elastic)?elastic.toFixed(4):'n/a'}</b></div>`;
+   Plotly.react(`p_${k}`,[
+     {x:csx,y:vals,type:'scatter',mode:'lines',name:'M(c)',yaxis:'y'},
+     {x:csx,y:der,type:'scatter',mode:'lines',name:'dM/dc',yaxis:'y2'},
+     {x:[cs],y:[mv],type:'scatter',mode:'markers',marker:{size:10},name:'selected c',yaxis:'y'}
+   ],{margin:{l:55,r:55,b:45,t:10},xaxis:{title:'c'},yaxis:{title:'Metric value'},yaxis2:{title:'Signed derivative',overlaying:'y',side:'right',zeroline:true},legend:{orientation:'h'}},{responsive:true});
+   if(showIso.checked){
+     const fprs=Array.from({length:201},(_,i)=>i/200);
+     const cset=[cs];
+     let tr=[];
+     if(k==='specificity'||k==='fpr'){
+       const vx=k==='specificity'?1-M(k,xx,yy,cs):M(k,xx,yy,cs);
+       tr.push({x:[vx,vx],y:[0,1],type:'scatter',mode:'lines',line:{width:5},name:`selected c=${cs.toFixed(2)}`});
+     }else{
+       tr=cset.map(cv=>({x:fprs,y:fprs.map(f=>isoY(k,M(k,xx,yy,cv),cv,f)),type:'scatter',mode:'lines',line:{width:5},name:`selected c=${cv.toFixed(2)}`}));
+     }
+     tr.push({x:[xx],y:[yy],type:'scatter',mode:'markers+text',marker:{size:11},text:['selected ROC point'],textposition:'top center',name:'point'});
+     tr.push({x:[0,1],y:[0,1],type:'scatter',mode:'lines',line:{dash:'dot'},name:'random'});
+     Plotly.react(`iso_${k}`,tr,{margin:{l:55,r:20,b:45,t:10},xaxis:{title:'FPR',range:[0,1]},yaxis:{title:'TPR',range:[0,1]},legend:{orientation:'h'}},{responsive:true});
+   }
+ });
+}
+document.querySelectorAll('.metricChecks input').forEach(e=>e.addEventListener('change',update));[x,y,csel,cmax].forEach(e=>e.addEventListener('input',update));weight.addEventListener('change',update);showIso.addEventListener('change',update);update();
+</script></body></html>

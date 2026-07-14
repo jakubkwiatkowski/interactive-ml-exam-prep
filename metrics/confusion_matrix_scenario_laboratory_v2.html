@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Confusion Matrix Scenario Laboratory v2</title>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<script>window.MathJax={tex:{inlineMath:[['\\(','\\)'],['$','$']],displayMath:[['\\[','\\]']]},svg:{fontCache:'global'}};</script>
+<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+<style>
+body{font-family:Arial;margin:0;background:#f6f7fb;color:#222}header{background:#1f2937;color:#fff;padding:18px 24px}main{padding:16px}
+.card{background:#fff;border-radius:12px;padding:15px;box-shadow:0 1px 6px #0002;margin-bottom:15px}.editor{display:grid;grid-template-columns:340px 1fr;gap:14px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:8px}.kpi{background:#eef2f7;border-radius:8px;padding:8px;text-align:center}.kpi b{display:block;font-size:18px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}#roc,#pr{height:330px}.cm-edit,.cm-small{border-collapse:collapse}.cm-edit td,.cm-edit th,.cm-small td,.cm-small th{border:1px solid #cbd5e1;padding:8px;text-align:center}.cm-edit th,.cm-small th{background:#eef2f7}.cm-small{font-size:12px;margin:auto}.cmnum{width:84px}
+table.big{border-collapse:collapse;width:100%;font-size:13px}table.big th,table.big td{border:1px solid #cbd5e1;padding:7px;text-align:center}table.big th{background:#eef2f7;position:sticky;top:0}.scenario-name{text-align:left;font-weight:bold;min-width:210px}.note{background:#eef2ff;border-left:4px solid #4f46e5;padding:10px;border-radius:8px;line-height:1.45}.warn{background:#fff7ed;border-left-color:#ea580c}
+</style></head><body>
+<header><h2 style="margin:0">Confusion Matrix Scenario Laboratory v2</h2><div>Columns = true classes, rows = predictions, positive class first in both directions.</div></header>
+<main>
+<div class="card editor"><section><h3>Editable confusion matrix</h3>
+<table class="cm-edit">
+<tr><th colspan="2"></th><th colspan="2">True class</th></tr>
+<tr><th colspan="2"></th><th>Positive</th><th>Negative</th></tr>
+<tr><th rowspan="2">Prediction</th><th>Positive</th><td>TP<br><input id="TP" class="cmnum" type="number" min="0" value="80"></td><td>FP<br><input id="FP" class="cmnum" type="number" min="0" value="20"></td></tr>
+<tr><th>Negative</th><td>FN<br><input id="FN" class="cmnum" type="number" min="0" value="20"></td><td>TN<br><input id="TN" class="cmnum" type="number" min="0" value="80"></td></tr>
+</table>
+<label style="display:block;margin-top:12px">Load scenario</label><select id="preset" style="width:100%;padding:8px;margin-top:5px"></select>
+<div class="note" style="margin-top:10px">A single confusion matrix gives one ROC point and one PR point, not a full score-based curve. The displayed “3-point AUC” joins \((0,0)\), the current ROC point, and \((1,1)\):
+\[
+AUC_{3pt}=\frac{1+TPR-FPR}{2}.
+\]
+A true AUC requires ranked scores across many thresholds.</div></section>
+<section><h3>Computed metrics</h3><div id="kpis" class="kpis"></div><div class="grid2"><div><h3>Current ROC point</h3><div id="roc"></div></div><div><h3>Current PR point</h3><div id="pr"></div></div></div></section></div>
+<div class="card"><h3>Scenario comparison table</h3><div class="warn note">The same scenario can look good according to one metric and poor according to another.</div><div style="overflow:auto;max-height:720px;margin-top:10px"><table class="big" id="table"></table></div></div>
+</main>
+<script>
+const SCENARIOS=[["Always positive \u2014 balanced", 50, 0, 50, 0], ["Always positive \u2014 positives dominate", 900, 0, 100, 0], ["Always positive \u2014 negatives dominate", 100, 0, 900, 0], ["Always negative \u2014 balanced", 0, 50, 0, 50], ["Always negative \u2014 positives dominate", 0, 900, 0, 100], ["Always negative \u2014 negatives dominate", 0, 100, 0, 900], ["Generally good \u2014 negatives dominate", 80, 20, 2000, 8000], ["Generally good \u2014 positives dominate", 8000, 2000, 20, 80], ["Generally good \u2014 balanced", 80, 20, 20, 80], ["Generally bad \u2014 negatives dominate", 20, 80, 8000, 2000], ["Generally bad \u2014 positives dominate", 2000, 8000, 80, 20], ["Generally bad \u2014 balanced", 20, 80, 80, 20], ["High recall, poor precision", 95, 5, 900, 8100], ["High precision, poor recall", 10, 90, 1, 9999]];
+function sdiv(a,b){return b===0?NaN:a/b}
+function metrics(tp,fn,fp,tn){const p=tp+fn,n=fp+tn,total=p+n;const tpr=sdiv(tp,p),tnr=sdiv(tn,n),fpr=sdiv(fp,n),fnr=sdiv(fn,p),prec=sdiv(tp,tp+fp),npv=sdiv(tn,tn+fn);const acc=sdiv(tp+tn,total),ba=(tpr+tnr)/2,f1=sdiv(2*tp,2*tp+fp+fn),g=Math.sqrt((tpr||0)*(tnr||0)),j=tpr-fpr;const den=Math.sqrt((tp+fp)*(tp+fn)*(tn+fp)*(tn+fn)),mcc=den?((tp*tn-fp*fn)/den):NaN;const auc3=(1+tpr-fpr)/2;return{acc,prec,tpr,tnr,fpr,fnr,npv,f1,g,ba,j,mcc,auc3,p,n};}
+function fmt(x){return Number.isFinite(x)?x.toFixed(3):'—'}
+function smallCM(tp,fn,fp,tn){return `<table class="cm-small"><tr><th colspan="2"></th><th colspan="2">True</th></tr><tr><th colspan="2"></th><th>Pos</th><th>Neg</th></tr><tr><th rowspan="2">Pred</th><th>Pos</th><td>${tp}</td><td>${fp}</td></tr><tr><th>Neg</th><td>${fn}</td><td>${tn}</td></tr></table>`}
+function update(){const tp=+TP.value,fn=+FN.value,fp=+FP.value,tn=+TN.value,m=metrics(tp,fn,fp,tn);const labels=[['Accuracy',m.acc],['Precision / PPV',m.prec],['Recall / TPR / hit rate',m.tpr],['Specificity / TNR',m.tnr],['FPR / fallout',m.fpr],['FNR / miss rate',m.fnr],['NPV',m.npv],['F1 / Dice',m.f1],['G-mean',m.g],['Balanced accuracy',m.ba],['Youden J',m.j],['MCC',m.mcc],['3-point AUC',m.auc3],['Positive prevalence',m.p/(m.p+m.n)]];
+kpis.innerHTML=labels.map(([n,v])=>`<div class="kpi"><span>${n}</span><b>${fmt(v)}</b></div>`).join('');
+Plotly.react('roc',[{x:[0,m.fpr,1],y:[0,m.tpr,1],type:'scatter',mode:'lines+markers',name:'3-point ROC'},{x:[0,1],y:[0,1],type:'scatter',mode:'lines',line:{dash:'dot'},name:'random diagonal'}],{margin:{l:55,r:15,b:50,t:10},xaxis:{title:'FPR',range:[0,1]},yaxis:{title:'TPR',range:[0,1]}},{responsive:true});
+const prev=m.p/(m.p+m.n);Plotly.react('pr',[{x:[m.tpr],y:[m.prec],type:'scatter',mode:'markers+text',marker:{size:14},text:['current point'],textposition:'top center',name:'PR point'},{x:[0,1],y:[prev,prev],type:'scatter',mode:'lines',line:{dash:'dot'},name:'baseline prevalence'}],{margin:{l:55,r:15,b:50,t:10},xaxis:{title:'Recall',range:[0,1]},yaxis:{title:'Precision',range:[0,1]}},{responsive:true});}
+function load(i){const s=SCENARIOS[i];TP.value=s[1];FN.value=s[2];FP.value=s[3];TN.value=s[4];update()}
+preset.innerHTML=SCENARIOS.map((s,i)=>`<option value="${i}">${s[0]}</option>`).join('');preset.addEventListener('change',()=>load(+preset.value));[TP,FN,FP,TN].forEach(e=>e.addEventListener('input',update));
+const heads=['Scenario','Confusion matrix','Accuracy','Precision','Recall','Specificity','F1','G-mean','Balanced acc.','Youden J','MCC','3-point AUC'];
+table.innerHTML='<thead><tr>'+heads.map(x=>`<th>${x}</th>`).join('')+'</tr></thead><tbody>'+SCENARIOS.map(s=>{const m=metrics(s[1],s[2],s[3],s[4]);return `<tr><td class="scenario-name">${s[0]}</td><td>${smallCM(s[1],s[2],s[3],s[4])}</td><td>${fmt(m.acc)}</td><td>${fmt(m.prec)}</td><td>${fmt(m.tpr)}</td><td>${fmt(m.tnr)}</td><td>${fmt(m.f1)}</td><td>${fmt(m.g)}</td><td>${fmt(m.ba)}</td><td>${fmt(m.j)}</td><td>${fmt(m.mcc)}</td><td>${fmt(m.auc3)}</td></tr>`}).join('')+'</tbody>';
+load(8);
+</script></body></html>

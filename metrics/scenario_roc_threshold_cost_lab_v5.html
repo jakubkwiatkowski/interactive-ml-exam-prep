@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Scenario ROC Threshold and Cost Lab v5</title>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<script>window.MathJax={tex:{inlineMath:[['\\(','\\)'],['$','$']],displayMath:[['\\[','\\]']]},svg:{fontCache:'global'}};</script>
+<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+<style>
+body{font-family:Arial;margin:0;background:#f6f7fb;color:#222}header{background:#1f2937;color:#fff;padding:18px 24px}main{display:grid;grid-template-columns:390px 1fr;gap:16px;padding:16px}
+.card{background:#fff;border-radius:12px;padding:14px;box-shadow:0 1px 6px #0002;margin-bottom:14px}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.kpi{background:#eef2f7;border-radius:8px;padding:8px;text-align:center}.kpi b{display:block;font-size:18px}
+label{display:block;margin-top:10px;font-weight:700}.small{font-size:13px;color:#555;line-height:1.45}.note{background:#eef2ff;border-left:4px solid #4f46e5;padding:10px;border-radius:8px;line-height:1.5}.warn{background:#fff7ed;border-left-color:#ea580c}
+.toggle-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}.toggle-grid label{font-weight:400;margin:2px}#scores,#roc,#pr,#cost,#rank{height:320px}.hidden{display:none!important}
+</style></head><body>
+<header><h2 style="margin:0">Scenario ROC Threshold and Cost Lab v5</h2><div class="small" style="color:#d1d5db">All show/hide toggles work independently. This page explains ROC, PR, cost curves, lift, and threshold selection.</div></header>
+<main>
+<section>
+<div class="card"><label>Scenario</label><select id="scenario">
+<option value="balanced">Balanced classes, equal costs</option>
+<option value="cancer">Cancer screening: false negatives costly</option>
+<option value="spam">Spam filtering: false positives costly</option>
+<option value="fraud">Fraud review: rare positives, limited analysts</option>
+</select>
+<div id="scenarioText" class="note" style="margin-top:10px"></div>
+<label>Threshold: <span id="thrVal"></span></label><input id="thr" type="range" min="0" max="1" step="0.01" value="0.50">
+<div class="grid2">
+<div><label>Positive count</label><input id="npos" type="number" min="20" value="200"></div>
+<div><label>Negative count</label><input id="nneg" type="number" min="20" value="200"></div>
+<div><label>Cost of FN</label><input id="cfn" type="number" min="0" step="0.1" value="1"></div>
+<div><label>Cost of FP</label><input id="cfp" type="number" min="0" step="0.1" value="1"></div>
+<div><label>Top-k capacity</label><input id="topk" type="number" min="1" value="100"></div>
+</div>
+<div id="kpis" class="kpis" style="margin-top:12px"></div></div>
+<div class="card"><h3>Show / hide panels</h3><div class="toggle-grid">
+<label><input id="showScores" type="checkbox" checked> Score distributions</label>
+<label><input id="showROC" type="checkbox" checked> ROC and isometric</label>
+<label><input id="showPR" type="checkbox" checked> Precision–Recall curve</label>
+<label><input id="showCost" type="checkbox" checked> Cost curve</label>
+<label><input id="showRank" type="checkbox" checked> Ranking / top-k</label>
+<label><input id="showOptimal" type="checkbox" checked> How to compute the optimal threshold efficiently</label>
+<label><input id="showCostGuide" type="checkbox" checked> Cost and threshold — intuitive guide</label>
+</div></div></section>
+
+<section>
+<div id="scoresCard" class="card"><h3>Score distributions</h3><div id="scores"></div></div>
+<div id="rocCard" class="card"><h3>ROC curve and equal-cost isometric</h3><div id="roc"></div>
+<div class="small">For one application setting, the equal-cost isometric has slope
+\[
+\frac{P(-)C_{FP}}{P(+)C_{FN}}.
+\]
+Slide parallel lines toward the upper-left until the last one still touches the ROC region. That point gives minimum expected cost for that setting.</div></div>
+<div class="grid2"><div id="prCard" class="card"><h3>Precision–Recall curve</h3><div id="pr"></div></div><div id="costCard" class="card"><h3>Cost curve</h3><div id="cost"></div></div></div>
+<div id="rankCard" class="card"><h3>Ranking / top-k productivity and lift</h3><div id="rank"></div><div class="small">Precision@k = how trustworthy the top-k alerts are. Gain@k = how many of all positives you captured. Lift@k = enrichment relative to random selection.</div></div>
+<div id="optimalGuide" class="card"><h3>How to compute the optimal threshold efficiently</h3><div class="note">
+For each distinct score threshold \(t\), compute
+\[
+EC(t)=P(+)C_{FN}FNR(t)+P(-)C_{FP}FPR(t)
+\]
+and choose
+\[
+t^*=\arg\min_t EC(t).
+\]
+If class importance and error costs are equal, this reduces to maximizing Youden \(J=TPR-FPR\).
+</div>
+<div class="small">Practical implementation: sort all examples by score once; sweep through the distinct score values; update TP and FP counts cumulatively; evaluate only where the confusion matrix changes.</div></div>
+<div id="costGuide" class="card"><h3>Cost and threshold — intuitive guide</h3>
+<div class="note"><b>ROC asks:</b> what TPR/FPR trade-offs are available?<br><b>PR asks:</b> how trustworthy are positive alerts as recall changes?<br><b>Cost curves ask:</b> for which prevalence-and-cost conditions is each threshold cheapest?</div>
+<p class="small">A common horizontal coordinate is the probability-cost function:
+\[
+PCF=\frac{P(+)C_{FN}}{P(+)C_{FN}+P(-)C_{FP}}.
+\]
+Near \(PCF=0\), false-positive burden dominates. Near \(PCF=1\), false-negative burden dominates.
+The vertical axis is normalized expected cost:
+\[
+NEC=PCF\cdot FNR+(1-PCF)\cdot FPR.
+\]
+For one threshold, FNR and FPR are fixed, so \(NEC(PCF)\) is a straight line. Many thresholds give many lines; the lower envelope is the cheapest threshold for each operating condition.</p>
+<div class="warn note">ROC crossing only says that neither classifier dominates everywhere. Cost curves add the missing decision context and show where one threshold or classifier is preferable.</div></div>
+</section>
+</main>
+<script>
+function rng(seed){let s=seed>>>0;return()=>((s=(1664525*s+1013904223)>>>0)/4294967296)}
+function normal(r){const u=r()||1e-9,v=r();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v)}
+function sigmoid(z){return 1/(1+Math.exp(-z))}
+function generate(np,nn){const r=rng(42),p=[],n=[];for(let i=0;i<np;i++)p.push(sigmoid(1.25+1.05*normal(r)));for(let i=0;i<nn;i++)n.push(sigmoid(-1.25+1.05*normal(r)));return{p,n}}
+function cmAt(p,n,t){let TP=0,FN=0,FP=0,TN=0;p.forEach(s=>s>=t?TP++:FN++);n.forEach(s=>s>=t?FP++:TN++);return{TP,FN,FP,TN}}
+function div(a,b){return b? a/b:NaN}
+function met(z){const tpr=div(z.TP,z.TP+z.FN),fpr=div(z.FP,z.FP+z.TN),prec=div(z.TP,z.TP+z.FP),tnr=1-fpr,fnr=1-tpr;return{tpr,fpr,prec,tnr,fnr,f1:div(2*z.TP,2*z.TP+z.FP+z.FN),ba:(tpr+tnr)/2,g:Math.sqrt((tpr||0)*(tnr||0)),j:tpr-fpr}}
+function curve(p,n){return Array.from({length:201},(_,i)=>{const t=1-i/200,z=cmAt(p,n,t);return{t,z,...met(z)}})}
+function auc(a){let s=0;for(let i=1;i<a.length;i++)s+=(a[i].fpr-a[i-1].fpr)*(a[i].tpr+a[i-1].tpr)/2;return s}
+function setScenario(){
+ const s=scenario.value;
+ if(s==='balanced'){npos.value=200;nneg.value=200;cfn.value=1;cfp.value=1;topk.value=100;scenarioText.innerHTML='<b>Equal importance.</b> A balanced threshold can be chosen by maximizing Youden J or minimizing expected cost with equal costs.'}
+ if(s==='cancer'){npos.value=80;nneg.value=920;cfn.value=12;cfp.value=1;topk.value=150;scenarioText.innerHTML='<b>Cancer screening.</b> False negatives are much more costly, so the threshold moves lower: higher sensitivity, more false alarms.'}
+ if(s==='spam'){npos.value=300;nneg.value=700;cfn.value=1;cfp.value=8;topk.value=200;scenarioText.innerHTML='<b>Spam filtering.</b> False positives are costly because legitimate mail should not be blocked, so the threshold moves higher.'}
+ if(s==='fraud'){npos.value=40;nneg.value=1960;cfn.value=6;cfp.value=1;topk.value=100;scenarioText.innerHTML='<b>Fraud review.</b> Positives are rare and analysts can inspect only the top part of the ranking.'}
+}
+function panels(){
+ document.getElementById('scoresCard').classList.toggle('hidden',!showScores.checked);
+ document.getElementById('rocCard').classList.toggle('hidden',!showROC.checked);
+ document.getElementById('prCard').classList.toggle('hidden',!showPR.checked);
+ document.getElementById('costCard').classList.toggle('hidden',!showCost.checked);
+ document.getElementById('rankCard').classList.toggle('hidden',!showRank.checked);
+ document.getElementById('optimalGuide').classList.toggle('hidden',!showOptimal.checked);
+ document.getElementById('costGuide').classList.toggle('hidden',!showCostGuide.checked);
+}
+function update(){
+ const {p,n}=generate(+npos.value,+nneg.value), pts=curve(p,n), t=+thr.value,z=cmAt(p,n,t),m=met(z);
+ const prev=p.length/(p.length+n.length),fnc=+cfn.value,fpc=+cfp.value;
+ thrVal.textContent=t.toFixed(2);
+ const ec=prev*fnc*m.fnr+(1-prev)*fpc*m.fpr,acc=(z.TP+z.TN)/(p.length+n.length);
+ const items=p.map(s=>({s,y:1})).concat(n.map(s=>({s,y:0}))).sort((a,b)=>b.s-a.s),k=Math.min(+topk.value,items.length),found=items.slice(0,k).reduce((q,a)=>q+a.y,0),pk=found/k,lift=pk/prev,gain=found/p.length;
+ kpis.innerHTML=[['Accuracy',acc],['Recall / TPR',m.tpr],['Precision',m.prec],['Specificity',m.tnr],['FPR',m.fpr],['FNR',m.fnr],['F1',m.f1],['Balanced acc.',m.ba],['Youden J',m.j],['Expected cost',ec],['AUC',auc(pts)],['Lift@k',lift],['Gain@k',gain],['Threshold',t]].map(([n,v])=>`<div class="kpi"><span>${n}</span><b>${Number.isFinite(v)?v.toFixed(3):'undef'}</b></div>`).join('');
+ Plotly.react('scores',[{x:p,type:'histogram',opacity:.6,name:'positive scores'},{x:n,type:'histogram',opacity:.6,name:'negative scores'}],{barmode:'overlay',margin:{l:50,r:15,b:45,t:10},xaxis:{title:'score',range:[0,1]},yaxis:{title:'count'}},{responsive:true});
+ const slope=((1-prev)*fpc)/(prev*fnc); const b0=m.tpr+slope*m.fpr;
+ Plotly.react('roc',[
+  {x:pts.map(v=>v.fpr),y:pts.map(v=>v.tpr),type:'scatter',mode:'lines',name:'ROC'},
+  {x:[0,1],y:[0,1],type:'scatter',mode:'lines',line:{dash:'dot'},name:'random diagonal'},
+  {x:[m.fpr],y:[m.tpr],type:'scatter',mode:'markers+text',marker:{size:13},text:[`t=${t.toFixed(2)}`],textposition:'top center',name:'current threshold'},
+  {x:[0,1],y:[b0,b0-slope],type:'scatter',mode:'lines',line:{dash:'dash',width:3},name:'equal-cost isometric'}
+ ],{margin:{l:55,r:15,b:50,t:10},xaxis:{title:'FPR',range:[0,1]},yaxis:{title:'TPR',range:[0,1]}},{responsive:true});
+ Plotly.react('pr',[
+  {x:pts.map(v=>v.tpr),y:pts.map(v=>v.prec),type:'scatter',mode:'lines',name:'PR'},
+  {x:[0,1],y:[prev,prev],type:'scatter',mode:'lines',line:{dash:'dot'},name:'baseline prevalence'},
+  {x:[m.tpr],y:[m.prec],type:'scatter',mode:'markers+text',marker:{size:13},text:[`t=${t.toFixed(2)}`],textposition:'top center'}
+ ],{margin:{l:55,r:15,b:50,t:10},xaxis:{title:'Recall',range:[0,1]},yaxis:{title:'Precision',range:[0,1]}},{responsive:true});
+ const xs=Array.from({length:101},(_,i)=>i/100), idx=[15,50,85,120,170], traces=[];
+ idx.forEach(i=>{const pt=pts[i]; traces.push({x:xs,y:xs.map(q=>q*pt.fnr+(1-q)*pt.fpr),type:'scatter',mode:'lines',opacity:.45,name:`t=${pt.t.toFixed(2)}`})});
+ traces.push({x:xs,y:xs.map(q=>Math.min(...pts.map(v=>q*v.fnr+(1-q)*v.fpr))),type:'scatter',mode:'lines',line:{width:5},name:'lower envelope'});
+ Plotly.react('cost',traces,{margin:{l:55,r:15,b:50,t:10},xaxis:{title:'PCF (probability–cost function)',range:[0,1]},yaxis:{title:'Normalized expected cost',range:[0,1]}},{responsive:true});
+ let seen=0;const rx=[],precx=[],gainx=[];items.forEach((a,i)=>{seen+=a.y;rx.push((i+1)/items.length);precx.push(seen/(i+1));gainx.push(seen/p.length)});
+ Plotly.react('rank',[
+  {x:rx,y:precx,type:'scatter',mode:'lines',name:'precision in inspected prefix'},
+  {x:rx,y:gainx,type:'scatter',mode:'lines',name:'cumulative gain'},
+  {x:[0,1],y:[prev,prev],type:'scatter',mode:'lines',line:{dash:'dot'},name:'random precision baseline'},
+  {x:[k/items.length],y:[pk],type:'scatter',mode:'markers+text',marker:{size:12},text:[`top ${k}, lift=${lift.toFixed(1)}`],textposition:'top center'}
+ ],{margin:{l:55,r:15,b:50,t:10},xaxis:{title:'fraction inspected'},yaxis:{title:'value',range:[0,1]}},{responsive:true});
+}
+scenario.addEventListener('change',()=>{setScenario();update()});
+[thr,npos,nneg,cfn,cfp,topk].forEach(e=>e.addEventListener('input',update));
+[showScores,showROC,showPR,showCost,showRank,showOptimal,showCostGuide].forEach(e=>e.addEventListener('change',panels));
+setScenario();panels();update();
+</script></body></html>

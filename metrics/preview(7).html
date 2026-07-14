@@ -1,0 +1,30 @@
+<!doctype html><html><head><meta charset='utf-8'><title>Probabilistic Metrics Information Lab</title>
+<script src='https://cdn.plot.ly/plotly-2.35.2.min.js'></script>
+<script>window.MathJax={tex:{inlineMath:[['\\(','\\)'],['$','$']]}};</script><script defer src='https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js'></script>
+<style>body{font-family:Arial;margin:0;background:#f6f7fb;color:#222}header{background:#1f2937;color:white;padding:18px 24px}main{display:grid;grid-template-columns:370px 1fr;gap:16px;padding:16px}.card{background:white;border-radius:12px;padding:14px;box-shadow:0 1px 6px #0002}label{display:block;margin-top:10px;font-weight:bold}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}.kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.kpi{background:#eef2f7;border-radius:8px;padding:9px;text-align:center}.kpi b{display:block;font-size:18px}#lossplot,#entropyplot,#reliability{height:330px}.box{background:#f8fafc;border:1px solid #e5e7eb;border-radius:8px;padding:10px;margin-top:10px}.small{font-size:13px;color:#555;line-height:1.4}</style></head>
+<body><header><h2>Probabilistic Metrics & Information-Theory Lab</h2><div>See how Brier score, log-loss, entropy, cross-entropy, KL divergence, calibration, and information gain relate.</div></header>
+<main><section class='card'>
+<label>True binary label</label><select id='y'><option value='1' selected>y = 1</option><option value='0'>y = 0</option></select>
+<label>Predicted probability P(Y=1|x): <span id='pv'></span></label><input id='p' type='range' min='0.001' max='0.999' step='0.001' value='0.80'>
+<label>Prior probability P(Y=1): <span id='priorv'></span></label><input id='prior' type='range' min='0.01' max='0.99' step='0.01' value='0.20'>
+<label>Reliability simulation: true event probability q</label><input id='q' type='range' min='0.01' max='0.99' step='0.01' value='0.70'>
+<label>Model-reported probability r</label><input id='r' type='range' min='0.01' max='0.99' step='0.01' value='0.70'>
+<div class='kpis' id='kpis'></div>
+<div class='box'><b>Core identities</b><br>\(CrossEntropy(Q,P)=H(Q)+D_{KL}(Q\|P)\)<br>For a one-hot true label, binary cross-entropy equals log-loss.</div>
+<div class='box small'><b>Prior</b>: belief before seeing the model evidence.<br><b>Posterior</b>: probability after using the model/features.<br><b>Information gain</b>: how much the posterior improves knowledge relative to the prior.</div>
+</section>
+<section><div class='grid2'><div class='card'><h3>Loss vs predicted probability</h3><div id='lossplot'></div></div><div class='card'><h3>Entropy and KL geometry</h3><div id='entropyplot'></div></div></div><div class='card' style='margin-top:16px'><h3>Reliability / calibration point</h3><div id='reliability'></div><div class='small'>Perfect calibration lies on the diagonal: reported probability = observed event frequency. A perfect classifier can concentrate near 0 and 1 while still lying on this diagonal.</div></div></section></main>
+<script>
+const clip=x=>Math.min(.999999,Math.max(.000001,x));
+function H(q){q=clip(q);return -q*Math.log(q)-(1-q)*Math.log(1-q)}
+function CE(q,p){q=clip(q);p=clip(p);return -q*Math.log(p)-(1-q)*Math.log(1-p)}
+function KL(q,p){return CE(q,p)-H(q)}
+function brier(y,p){return Math.pow(p-y,2)}
+function logloss(y,p){p=clip(p);return -(y*Math.log(p)+(1-y)*Math.log(1-p))}
+function info(y,p,prior){const py=y===1?p:1-p, pr=y===1?prior:1-prior;return Math.log(py/pr)}
+function update(){const yy=+y.value,pp=+p.value,pr=+prior.value,qq=+q.value,rr=+r.value;pv.textContent=pp.toFixed(3);priorv.textContent=pr.toFixed(2);const vals=[['Brier / squared error',brier(yy,pp)],['Log-loss / cross-entropy',logloss(yy,pp)],['Prior surprisal',-Math.log(yy?pr:1-pr)],['Posterior surprisal',-Math.log(yy?pp:1-pp)],['Log information gain',info(yy,pp,pr)],['Calibration gap |r-q|',Math.abs(rr-qq)]];kpis.innerHTML=vals.map(([n,v])=>`<div class='kpi'><span>${n}</span><b>${v.toFixed(4)}</b></div>`).join('');
+const ps=Array.from({length:300},(_,i)=>.001+i*.998/299);Plotly.react('lossplot',[{x:ps,y:ps.map(z=>brier(yy,z)),type:'scatter',mode:'lines',name:'Brier'},{x:ps,y:ps.map(z=>logloss(yy,z)),type:'scatter',mode:'lines',name:'Log-loss'},{x:[pp],y:[brier(yy,pp)],type:'scatter',mode:'markers',marker:{size:12},name:'current Brier'},{x:[pp],y:[logloss(yy,pp)],type:'scatter',mode:'markers',marker:{size:12},name:'current log-loss'}],{margin:{l:55,r:15,b:50,t:10},xaxis:{title:'predicted P(Y=1)'},yaxis:{title:'loss'}},{responsive:true});
+const qs=Array.from({length:200},(_,i)=>.001+i*.998/199);Plotly.react('entropyplot',[{x:qs,y:qs.map(H),type:'scatter',mode:'lines',name:'Entropy H(q)'},{x:qs,y:qs.map(z=>CE(z,pp)),type:'scatter',mode:'lines',name:`Cross-entropy CE(q,p=${pp.toFixed(2)})`},{x:qs,y:qs.map(z=>KL(z,pp)),type:'scatter',mode:'lines',name:'KL(q||p)'}],{margin:{l:55,r:15,b:50,t:10},xaxis:{title:'true Bernoulli probability q'},yaxis:{title:'nats'}},{responsive:true});
+Plotly.react('reliability',[{x:[0,1],y:[0,1],type:'scatter',mode:'lines',line:{dash:'dash'},name:'perfect calibration'},{x:[rr],y:[qq],type:'scatter',mode:'markers+text',marker:{size:14},text:[rr>qq?'overconfident':rr<qq?'underconfident':'calibrated'],textposition:'top center',name:'model group'}],{margin:{l:55,r:15,b:50,t:10},xaxis:{title:'reported probability r',range:[0,1]},yaxis:{title:'observed frequency q',range:[0,1]}},{responsive:true})}
+[y,p,prior,q,r].forEach(e=>e.addEventListener('input',update));update();
+</script></body></html>

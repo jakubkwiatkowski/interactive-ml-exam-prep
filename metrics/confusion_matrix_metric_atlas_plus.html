@@ -1,0 +1,37 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Confusion-Matrix Metric Atlas Plus</title>
+<script>window.MathJax={tex:{inlineMath:[['\\(','\\)'],['$','$']]}};</script><script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<style>
+body{font-family:Arial;margin:0;background:#f6f7fb;color:#222}header{background:#1f2937;color:#fff;padding:18px 24px}main{padding:16px}
+.toolbar,.metric{background:#fff;border-radius:12px;padding:14px;box-shadow:0 1px 6px #0002}.toolbar{margin-bottom:14px}
+.metric{display:grid;grid-template-columns:190px 1fr 1fr 320px;gap:14px;align-items:center;margin-bottom:12px}.name{font-size:18px;font-weight:700}.alias{font-size:12px;color:#666;margin-top:4px}.eq{font-size:18px;text-align:center}.alt{font-size:15px;line-height:1.45}
+.cm{border-collapse:collapse;width:100%}.cm th,.cm td{border:1px solid #bbb;padding:8px;text-align:center}.cm th{background:#eef2f7}
+.num{background:#bfdbfe!important}.den{outline:4px solid #f59e0b;outline-offset:-4px}.both{background:#c4b5fd!important;outline:4px solid #f59e0b;outline-offset:-4px}
+@media(max-width:1200px){.metric{grid-template-columns:1fr}.eq,.alt{text-align:left}}
+</style></head><body>
+<header><h2>Confusion-Matrix Metric Atlas Plus</h2><div>Blue = numerator, orange outline = denominator, purple = both.</div></header>
+<main><div class="toolbar"><input id="search" placeholder="Search metric or alias..." style="padding:8px;width:320px;max-width:90%"></div><div id="list"></div></main>
+<script>
+const metrics=[
+{name:'Accuracy',aliases:'Overall correctness',eq:'\\dfrac{TP+TN}{TP+TN+FP+FN}',alt:['\\(Accuracy=1-Error\\ rate\\)','\\(Accuracy= prevalence\\cdot TPR + (1-prevalence)\\cdot TNR\\)'],num:['TP','TN'],den:['TP','TN','FP','FN']},
+{name:'Error rate',aliases:'Misclassification rate',eq:'\\dfrac{FP+FN}{TP+TN+FP+FN}',alt:['\\(Error\\ rate = 1-Accuracy\\)'],num:['FP','FN'],den:['TP','TN','FP','FN']},
+{name:'Precision',aliases:'Positive predictive value, PPV',eq:'\\dfrac{TP}{TP+FP}',alt:['\\(Precision=PPV\\)'],num:['TP'],den:['TP','FP']},
+{name:'Recall',aliases:'Sensitivity, true positive rate, TPR, hit rate',eq:'\\dfrac{TP}{TP+FN}',alt:['\\(Recall=Sensitivity=TPR\\)','\\(Recall=1-FNR\\)'],num:['TP'],den:['TP','FN']},
+{name:'Specificity',aliases:'True negative rate, TNR',eq:'\\dfrac{TN}{TN+FP}',alt:['\\(Specificity=TNR\\)','\\(Specificity=1-FPR\\)'],num:['TN'],den:['TN','FP']},
+{name:'Fallout',aliases:'False positive rate, FPR',eq:'\\dfrac{FP}{FP+TN}',alt:['\\(FPR=1-Specificity\\)'],num:['FP'],den:['FP','TN']},
+{name:'False negative rate',aliases:'FNR, miss rate',eq:'\\dfrac{FN}{FN+TP}',alt:['\\(FNR=1-Recall\\)'],num:['FN'],den:['FN','TP']},
+{name:'Negative predictive value',aliases:'NPV',eq:'\\dfrac{TN}{TN+FN}',alt:['Negative-class analogue of precision.'],num:['TN'],den:['TN','FN']},
+{name:'F1 measure',aliases:'F-score with beta=1, Sørensen–Dice for binary labels',eq:'\\dfrac{2TP}{2TP+FP+FN}',alt:['\\(F_1=\\dfrac{2PR}{P+R}\\)','\\(P=Precision,\\ R=Recall\\)'],num:['TP'],den:['TP','FP','FN']},
+{name:'F-beta score',aliases:'Weighted F-score',eq:'\\dfrac{(1+\\beta^2)TP}{(1+\\beta^2)TP+\\beta^2FN+FP}',alt:['\\(F_\\beta=\\dfrac{(1+\\beta^2)PR}{\\beta^2P+R}\\)'],num:['TP'],den:['TP','FP','FN']},
+{name:'Balanced accuracy',aliases:'Average class recall',eq:'\\dfrac{1}{2}\\left(\\dfrac{TP}{TP+FN}+\\dfrac{TN}{TN+FP}\\right)',alt:['\\(BA=\\dfrac{Sensitivity+Specificity}{2}\\)','\\(BA=\\dfrac{TPR+TNR}{2}\\)'],num:['TP','TN'],den:['TP','TN','FP','FN']},
+{name:'Youden J',aliases:'Informedness',eq:'\\dfrac{TP}{TP+FN}+\\dfrac{TN}{TN+FP}-1',alt:['\\(J=Sensitivity+Specificity-1\\)','\\(J=TPR-FPR\\)'],num:['TP','TN'],den:['TP','TN','FP','FN']},
+{name:'MCC',aliases:'Matthews correlation coefficient, phi coefficient',eq:'\\dfrac{TP\\cdot TN-FP\\cdot FN}{\\sqrt{(TP+FP)(TP+FN)(TN+FP)(TN+FN)}}',alt:['Works well under class imbalance.'],num:['TP','TN','FP','FN'],den:['TP','TN','FP','FN']},
+{name:'G-mean',aliases:'Geometric mean of sensitivity and specificity',eq:'\\sqrt{\\dfrac{TP}{TP+FN}\\cdot\\dfrac{TN}{TN+FP}}',alt:['\\(G\\text{-}mean=\\sqrt{Sensitivity\\cdot Specificity}\\)'],num:['TP','TN'],den:['TP','TN','FP','FN']},
+{name:'Fowlkes–Mallows',aliases:'Geometric mean of precision and recall',eq:'\\sqrt{\\dfrac{TP}{TP+FP}\\cdot\\dfrac{TP}{TP+FN}}',alt:['\\(FM=\\sqrt{Precision\\cdot Recall}\\)'],num:['TP'],den:['TP','FP','FN']},
+{name:'Jaccard index',aliases:'Critical success index, threat score',eq:'\\dfrac{TP}{TP+FP+FN}',alt:['Related to Dice / F1.'],num:['TP'],den:['TP','FP','FN']},
+{name:'Dice coefficient',aliases:'Sørensen–Dice',eq:'\\dfrac{2TP}{2TP+FP+FN}',alt:['Same algebraic form as binary \\(F_1\\).'],num:['TP'],den:['TP','FP','FN']},
+{name:"Cohen's kappa",aliases:'Chance-corrected agreement',eq:'\\dfrac{p_o-p_e}{1-p_e}',alt:['\\(p_o\\)=observed agreement, \\(p_e\\)=expected agreement by chance.'],num:['TP','TN','FP','FN'],den:['TP','TN','FP','FN']}
+];
+function cls(x,m){const a=m.num.includes(x),b=m.den.includes(x);return a&&b?'both':a?'num':b?'den':''}
+function card(m){return `<section class="metric" data-text="${(m.name+' '+m.aliases).toLowerCase()}"><div><div class="name">${m.name}</div><div class="alias">${m.aliases}</div></div><div class="eq">\\(${m.eq}\\)</div><div class="alt">${m.alt.map(x=>`<div>${x}</div>`).join('')}</div><div><table class="cm"><tr><th>Predicted \\ True</th><th>Positive</th><th>Negative</th></tr><tr><th>Positive</th><td class="${cls('TP',m)}">TP</td><td class="${cls('FP',m)}">FP</td></tr><tr><th>Negative</th><td class="${cls('FN',m)}">FN</td><td class="${cls('TN',m)}">TN</td></tr></table></div></section>`}
+list.innerHTML=metrics.map(card).join('');search.addEventListener('input',e=>{const q=e.target.value.toLowerCase();document.querySelectorAll('.metric').forEach(x=>x.style.display=x.dataset.text.includes(q)?'grid':'none')});if(window.MathJax)MathJax.typesetPromise();
+</script></body></html>

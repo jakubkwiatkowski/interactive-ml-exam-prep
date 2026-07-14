@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Effective Skew Geometry Tutorial</title>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<script>window.MathJax={tex:{inlineMath:[['\\(','\\)'],['$','$']]}};</script>
+<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<style>
+body{font-family:Arial,sans-serif;margin:0;background:#f6f7fb;color:#222}
+header{background:#1f2937;color:white;padding:18px 24px;position:sticky;top:0;z-index:10}
+main{display:grid;grid-template-columns:370px 1fr;gap:16px;padding:16px}
+.card{background:white;border-radius:12px;padding:14px;box-shadow:0 1px 6px #0002;margin-bottom:14px}
+label{display:block;margin-top:10px;font-weight:700}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+#iso,#fg,#skewclass,#gradient{height:360px}.eq{background:#eef2f7;border-radius:9px;padding:11px;line-height:1.55;margin-top:10px}
+.kpi{background:#eef2f7;border-radius:8px;padding:8px;text-align:center}.kpis{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.small{font-size:13px;color:#555;line-height:1.4}.callout{background:#eef2ff;border-left:4px solid #4f46e5;padding:10px;border-radius:8px;margin:10px 0}
+.tabs button{padding:8px 10px;margin:2px;cursor:pointer}.activeBtn{font-weight:bold;outline:2px solid #4f46e5}
+</style></head>
+<body>
+<header><h2 style="margin:0">Effective Skew Geometry — Interactive Tutorial</h2>
+<div class="small" style="color:#d1d5db">Why “local” matters, how the derivative gives the isometric slope, and why F1 and G are skew-equivalent.</div></header>
+<main>
+<section>
+<div class="card">
+<label>Metric</label>
+<select id="metric">
+<option value="accuracy">Accuracy</option><option value="precision">Precision</option>
+<option value="f1">F1</option><option value="g">G-measure</option>
+<option value="balanced">Balanced accuracy</option><option value="wracc">WRAcc</option>
+<option value="curved">Illustrative nonlinear metric</option>
+</select>
+<label>TPR: <span id="tprv"></span></label><input id="tpr" type="range" min="0.02" max="0.98" step="0.01" value="0.80">
+<label>FPR: <span id="fprv"></span></label><input id="fpr" type="range" min="0.02" max="0.98" step="0.01" value="0.20">
+<label>Expected skew \(c\): <span id="cv"></span></label><input id="c" type="range" min="0.1" max="10" step="0.1" value="1">
+<div class="kpis" id="kpis"></div>
+<div class="eq" id="formula"></div>
+</div>
+
+<div class="card">
+<h3>What “local” means</h3>
+<div class="callout">
+A curved isometric can have one slope here and another slope somewhere else.  
+“Local slope” means: zoom in very close to one selected point and replace the curve by its tangent line.
+</div>
+<p class="small">For a straight isometric, the local slope is the same everywhere. For a curved isometric, it changes from point to point.</p>
+</div>
+</section>
+
+<section>
+<div class="card"><h3>1. Isometric and tangent slope</h3><div id="iso"></div></div>
+<div class="grid2">
+<div class="card"><h3>2. F1 and G: same geometry, different values</h3><div id="fg"></div></div>
+<div class="card"><h3>3. Strong vs weak skew-insensitivity</h3><div id="skewclass"></div></div>
+</div>
+<div class="card"><h3>4. Gradient intuition</h3><div id="gradient"></div>
+<div class="eq">
+Along an equal-value curve, the metric cannot change:
+\[
+dM=M_x\,dx+M_y\,dy=0.
+\]
+Therefore:
+\[
+\frac{dy}{dx}=-\frac{M_x}{M_y}.
+\]
+Here \(x=FPR\), \(y=TPR\). \(M_x\) asks how the metric changes if only FPR moves; \(M_y\) asks how it changes if only TPR moves.
+</div></div>
+</section>
+</main>
+<script>
+function M(k,x,y,c){
+ if(k==='accuracy')return (y+c*(1-x))/(1+c);
+ if(k==='precision')return y/(y+c*x);
+ if(k==='f1')return 2*y/(y+c*x+1);
+ if(k==='g')return y/(c*x+1);
+ if(k==='balanced')return (y+1-x)/2;
+ if(k==='wracc')return 4*c/((1+c)*(1+c))*(y-x);
+ if(k==='curved')return y*y/(y*y+c*x+0.15);
+}
+function slope(k,x,y,c){
+ if(k==='accuracy')return c;
+ if(k==='precision')return y/x;
+ if(k==='f1'||k==='g')return c*y/(c*x+1);
+ if(k==='balanced'||k==='wracc')return 1;
+ if(k==='curved'){
+   // M=y^2/(y^2+cx+a); implicit slope = c*y/(2*(c*x+a))
+   return c*y/(2*(c*x+0.15));
+ }
+}
+function isoY(k,m,x,c){
+ if(k==='accuracy')return m*(1+c)-c*(1-x);
+ if(k==='precision')return m*c*x/(1-m);
+ if(k==='f1')return m*(c*x+1)/(2-m);
+ if(k==='g')return m*(c*x+1);
+ if(k==='balanced')return 2*m-1+x;
+ if(k==='wracc')return x+m*(1+c)*(1+c)/(4*c);
+ if(k==='curved'){
+   const v=m*(c*x+0.15)/(1-m); return v>=0?Math.sqrt(v):NaN;
+ }
+}
+function formula(k){
+ const d={
+ accuracy:`\\(M=\\frac{TPR+c(1-FPR)}{1+c},\\quad s_{eff}=c\\)`,
+ precision:`\\(M=\\frac{TPR}{TPR+cFPR},\\quad s_{eff}=TPR/FPR\\)`,
+ f1:`\\(M=\\frac{2TPR}{TPR+cFPR+1},\\quad s_{eff}=\\frac{cTPR}{cFPR+1}=\\frac{TPR}{FPR+1/c}\\)`,
+ g:`\\(G=\\frac{TPR}{cFPR+1},\\quad s_{eff}=\\frac{cTPR}{cFPR+1}=\\frac{TPR}{FPR+1/c}\\)`,
+ balanced:`\\(BA=\\frac{TPR+1-FPR}{2},\\quad s_{eff}=1\\)`,
+ wracc:`\\(WRAcc=\\frac{4c}{(1+c)^2}(TPR-FPR),\\quad s_{eff}=1\\)`,
+ curved:`\\(M=\\frac{TPR^2}{TPR^2+cFPR+0.15}\\),\\quad isometrics\\ are\\ curved\\)`
+ }; return d[k];
+}
+function update(){
+ const k=metric.value,x=+fpr.value,y=+tpr.value,cc=+c.value,m=M(k,x,y,cc),s=slope(k,x,y,cc);
+ tprv.textContent=y.toFixed(2);fprv.textContent=x.toFixed(2);cv.textContent=cc.toFixed(2);
+ kpis.innerHTML=`<div class='kpi'>Metric value<b>${m.toFixed(4)}</b></div><div class='kpi'>Local effective slope<b>${s.toFixed(4)}</b></div>`;
+ formula.innerHTML=formula(k); if(window.MathJax)MathJax.typesetPromise();
+
+ const xs=Array.from({length:301},(_,i)=>i/300), ys=xs.map(z=>isoY(k,m,z,cc));
+ const dx=.12, tx=[Math.max(0,x-dx),Math.min(1,x+dx)], ty=tx.map(z=>y+s*(z-x));
+ Plotly.react('iso',[
+  {x:xs,y:ys,type:'scatter',mode:'lines',name:'equal-metric isometric'},
+  {x:tx,y:ty,type:'scatter',mode:'lines',line:{dash:'dash',width:4},name:'local tangent'},
+  {x:[x],y:[y],type:'scatter',mode:'markers+text',marker:{size:13},text:['selected point'],textposition:'top center',name:'point'},
+  {x:[0,1],y:[0,1],type:'scatter',mode:'lines',line:{dash:'dot'},name:'random diagonal'}
+ ],{margin:{l:55,r:15,b:50,t:10},xaxis:{title:'FPR',range:[0,1]},yaxis:{title:'TPR',range:[0,1]}},{responsive:true});
+
+ // F/G equivalence: choose same selected point; draw contours through it
+ const mf=M('f1',x,y,cc), mg=M('g',x,y,cc);
+ const yf=xs.map(z=>isoY('f1',mf,z,cc)), yg=xs.map(z=>isoY('g',mg,z,cc));
+ Plotly.react('fg',[
+  {x:xs,y:yf,type:'scatter',mode:'lines',line:{width:6},name:`F1=${mf.toFixed(3)}`},
+  {x:xs,y:yg,type:'scatter',mode:'lines',line:{dash:'dash',width:3},name:`G=${mg.toFixed(3)}`},
+  {x:[x],y:[y],type:'scatter',mode:'markers',marker:{size:12},name:'same ROC point'}
+ ],{margin:{l:55,r:15,b:50,t:10},xaxis:{title:'FPR',range:[0,1]},yaxis:{title:'TPR',range:[0,1]}},{responsive:true});
+
+ // weak vs strong
+ const cvals=[.5,1,3,7], traces=[];
+ cvals.forEach((cv,i)=>{
+   const mw=M('wracc',x,y,cv), yw=xs.map(z=>isoY('wracc',mw,z,cv));
+   traces.push({x:xs,y:yw,type:'scatter',mode:'lines',name:`WRAcc c=${cv}`});
+ });
+ // strong variant, same line for all c
+ const j=y-x; traces.push({x:xs,y:xs.map(z=>z+j),type:'scatter',mode:'lines',line:{width:6,dash:'dash'},name:'TPR-FPR (strongly insensitive)'});
+ Plotly.react('skewclass',traces,{margin:{l:55,r:15,b:50,t:10},xaxis:{title:'FPR',range:[0,1]},yaxis:{title:'TPR',range:[0,1]}},{responsive:true});
+
+ // gradient arrows: Mx and My direction, tangent orthogonal
+ const eps=.001, mx=(M(k,x+eps,y,cc)-M(k,x-eps,y,cc))/(2*eps), my=(M(k,x,y+eps,cc)-M(k,x,y-eps,cc))/(2*eps);
+ const scale=.18/Math.max(Math.abs(mx),Math.abs(my),1e-6);
+ Plotly.react('gradient',[
+  {x:[x,x+mx*scale],y:[y,y+my*scale],type:'scatter',mode:'lines+markers',line:{width:5},name:'gradient ∇M'},
+  {x:[x,x+0.14],y:[y,y+s*0.14],type:'scatter',mode:'lines',line:{dash:'dash',width:4},name:'isometric tangent'},
+  {x:[x],y:[y],type:'scatter',mode:'markers',marker:{size:12},name:'point'}
+ ],{margin:{l:55,r:15,b:50,t:10},xaxis:{title:'FPR',range:[0,1]},yaxis:{title:'TPR',range:[0,1]}},{responsive:true});
+}
+[metric,tpr,fpr,c].forEach(e=>e.addEventListener('input',update));update();
+</script></body></html>

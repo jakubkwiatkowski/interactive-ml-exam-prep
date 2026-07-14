@@ -1,0 +1,84 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Error-estimation method selection map</title>
+<style>
+:root{--bg:#f5f7fb;--panel:#fff;--ink:#122033;--muted:#607086;--line:#dbe3ef;--blue:#2563eb;--shadow:0 14px 38px rgba(15,23,42,.10)}
+*{box-sizing:border-box}body{margin:0;background:linear-gradient(#eef4ff,#f8fafc 18%);font-family:Inter,system-ui,Segoe UI,Arial,sans-serif;color:var(--ink)}
+header{background:linear-gradient(135deg,#0f172a,#172554 55%,#1d4ed8);color:#fff;padding:28px 24px}header>div{max-width:1400px;margin:auto}h1{margin:0 0 8px;font-size:clamp(28px,4vw,46px)}header p{margin:0;color:#dbeafe;max-width:1100px;line-height:1.55}
+.wrap{max-width:1400px;margin:auto;padding:22px}.card{background:#fff;border:1px solid #e5e7eb;border-radius:22px;box-shadow:var(--shadow);padding:22px;margin-bottom:20px}
+.grid2{display:grid;grid-template-columns:370px 1fr;gap:18px}.controls{display:grid;gap:12px}.control{border:1px solid var(--line);border-radius:14px;padding:12px;background:#fbfdff}.control label{font-weight:800;display:block;margin-bottom:7px}.control select{width:100%;padding:8px;border:1px solid #cbd5e1;border-radius:9px;background:#fff}
+.callout{padding:14px 16px;border-radius:14px;border-left:5px solid var(--blue);background:#eff6ff;line-height:1.55;margin:12px 0}
+#parallel{width:100%;height:530px;border:1px solid var(--line);border-radius:16px;background:#fff}.legend{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px}.chip{padding:6px 9px;border:1px solid var(--line);border-radius:999px;background:#fff;font-size:.84rem;cursor:pointer}.chip.off{opacity:.25}
+.result{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.mini{border:1px solid var(--line);border-radius:16px;padding:14px;background:linear-gradient(#fff,#f8fbff)}.mini b{display:block;margin-bottom:6px}.mini p{margin:0;color:var(--muted);line-height:1.45}
+details{border:1px solid var(--line);border-radius:14px;padding:10px 13px;margin:10px 0;background:#fbfdff}summary{cursor:pointer;font-weight:800;color:#1d4ed8}
+table{border-collapse:collapse;width:100%;min-width:900px}th,td{border:1px solid var(--line);padding:9px 10px;text-align:left;vertical-align:top}th{background:#eaf2ff}.tablewrap{overflow:auto;border:1px solid var(--line);border-radius:16px}
+@media(max-width:950px){.grid2{grid-template-columns:1fr}.result{grid-template-columns:1fr}}
+</style></head><body>
+<header><div><h1>Error-estimation method selection map</h1><p>Explore how dataset size, dependence structure, training cost, deployment goal, and expected error affect the suitability of common evaluation methods.</p></div></header>
+<div class="wrap">
+<div class="card grid2"><div><h2>Your scenario</h2><div class="controls">
+<div class="control"><label>Dataset size</label><select id="size"><option value="small">Small</option><option value="medium" selected>Medium</option><option value="large">Large</option></select></div>
+<div class="control"><label>Dependence structure</label><select id="dep"><option value="iid" selected>Approximately IID</option><option value="imbalance">Class imbalance</option><option value="group">Persons / groups</option><option value="time">Time series</option><option value="space">Locations / spatial</option></select></div>
+<div class="control"><label>Training cost</label><select id="cost"><option value="low">Low</option><option value="medium" selected>Medium</option><option value="high">High</option></select></div>
+<div class="control"><label>Main goal</label><select id="goal"><option value="final">Final clean estimate</option><option value="selection" selected>Model selection / comparison</option><option value="stability">Study split sensitivity</option><option value="deployment">Deployment-specific generalization</option></select></div>
+<div class="control"><label>Expected error</label><select id="err"><option value="low">Very low</option><option value="moderate" selected>Moderate</option><option value="high">High</option></select></div>
+</div><div id="advice" class="callout"></div></div>
+<div><h2>Parallel-coordinate suitability map</h2><svg id="parallel" viewBox="0 0 1000 530"></svg><div id="legend" class="legend"></div><p style="color:#607086;font-size:.9rem">Higher is generally more favorable. This is a qualitative learning aid, not a theorem.</p></div></div>
+<div class="card"><h2>Top recommendations</h2><div id="results" class="result"></div></div>
+<div class="card"><h2>How to interpret the axes</h2>
+<details open><summary>Dataset-size suitability</summary><p>Hold-out becomes attractive when both train and test can be large. CV/bootstrap use small datasets more efficiently. LOO is usually practical only when n is small-to-moderate or training has a shortcut.</p></details>
+<details><summary>Dependence compatibility</summary><p>Random IID splitting is inappropriate when rows share time, patients, groups, machines, or locations. Then use blocked/group-aware variants.</p></details>
+<details><summary>Low compute cost</summary><p>Hold-out fits once; k-fold fits k times; 10×10CV fits 100; LOO fits n; bootstrap fits B.</p></details>
+<details><summary>Training-data efficiency</summary><p>LOO and high-k CV train on almost all data. Hold-out sacrifices a fixed part. Bootstrap has n positions but only about 0.632n unique training cases.</p></details>
+<details><summary>Clean uncertainty</summary><p>Independent hold-out has a clean fixed-model Bernoulli/binomial interpretation. CV fits different, dependent models, so simple confidence intervals are harder.</p></details>
+<details><summary>Partition stability</summary><p>Repeated CV and repeated hold-out reduce dependence on one arbitrary partition, but they still reuse one dataset.</p></details></div>
+<div class="card"><h2>Scenario-to-method matrix</h2><div class="tablewrap"><table><thead><tr><th>Scenario</th><th>Primary direction</th><th>Why</th><th>Warning</th></tr></thead><tbody>
+<tr><td>Large IID, final report</td><td>Large untouched hold-out</td><td>Strong training set and precise independent test</td><td>Do not tune on the final test</td></tr>
+<tr><td>Small IID classification</td><td>Stratified 5- or 10-fold CV</td><td>Efficient use of scarce data</td><td>Fold scores are dependent</td></tr>
+<tr><td>Grouped/person data</td><td>GroupKFold / leave-one-group-out</td><td>Prevents identity leakage</td><td>Independent unit is group, not row</td></tr>
+<tr><td>Time series</td><td>Blocked / rolling-origin validation</td><td>Respects information availability</td><td>Overlapping windows may need a gap</td></tr>
+<tr><td>New locations</td><td>Spatial blocks / leave-location-out</td><td>Tests transfer beyond nearby points</td><td>Define target population carefully</td></tr>
+<tr><td>Expensive learner</td><td>Hold-out or small-k CV</td><td>Limits model fits</td><td>Greater split uncertainty</td></tr>
+<tr><td>Study split sensitivity</td><td>Repeated CV / repeated hold-out</td><td>Averages partition randomness</td><td>No new population information</td></tr>
+<tr><td>Tiny dataset, variability study</td><td>Bootstrap with OOB</td><td>Simulates sampling variability</td><td>Cannot invent missing subpopulations</td></tr>
+</tbody></table></div></div>
+</div>
+<script>
+const methods=[
+{name:'Hold-out',color:'#2563eb',base:[3,3,5,2,5,2],desc:'Best clean final estimate when data are large enough.'},
+{name:'Stratified k-fold',color:'#059669',base:[4,4,3,4,2,3],desc:'Strong general-purpose choice for classification and limited data.'},
+{name:'LOO',color:'#7c3aed',base:[3,3,1,5,2,2],desc:'Maximum training use, but expensive and potentially unstable.'},
+{name:'Repeated CV',color:'#0891b2',base:[4,4,1,4,2,5],desc:'Reduces dependence on one fold partition; costly and correlated.'},
+{name:'Repeated hold-out',color:'#d97706',base:[3,3,3,3,2,4],desc:'Simple split-sensitivity analysis.'},
+{name:'E0 bootstrap',color:'#dc2626',base:[4,3,2,3,2,5],desc:'Useful for small-data variability; only about 63.2% unique train cases.'},
+{name:'.632 bootstrap',color:'#be123c',base:[4,3,2,3,2,5],desc:'Combines resubstitution and OOB error.'},
+{name:'Structured split',color:'#0f766e',base:[3,5,3,3,4,3],desc:'Required for time, group, patient, or location dependence.'}
+];
+const axes=['Small-data\nsuitability','Dependence\ncompatibility','Low compute\ncost','Training-data\nefficiency','Clean\nuncertainty','Partition\nstability'];
+let visible=new Set(methods.map(m=>m.name));
+const sizeEl=document.getElementById('size'),depEl=document.getElementById('dep'),costEl=document.getElementById('cost'),goalEl=document.getElementById('goal'),errEl=document.getElementById('err');
+function scores(m){let s=[...m.base],size=sizeEl.value,dep=depEl.value,cost=costEl.value,goal=goalEl.value,err=errEl.value;
+if(size==='large'){if(m.name==='Hold-out')s[0]=5;if(m.name.includes('bootstrap'))s[0]=2;if(m.name==='LOO')s[0]=1}
+if(size==='small'){if(m.name==='Hold-out')s[0]=2;if(['Stratified k-fold','Repeated CV','E0 bootstrap','.632 bootstrap'].includes(m.name))s[0]=5}
+if(dep==='imbalance'){if(m.name==='Stratified k-fold')s[1]=5}
+if(['group','time','space'].includes(dep))s[1]=m.name==='Structured split'?5:1;
+if(cost==='high')s[2]=m.name==='Hold-out'?5:(['Repeated CV','LOO','E0 bootstrap','.632 bootstrap'].includes(m.name)?1:3);
+if(cost==='low'&&['Repeated CV','LOO','E0 bootstrap','.632 bootstrap'].includes(m.name))s[2]=4;
+if(goal==='final'&&m.name==='Hold-out')s[4]=5;
+if(goal==='deployment'&&m.name==='Structured split')s[4]=5;
+if(goal==='stability'&&['Repeated CV','Repeated hold-out','E0 bootstrap','.632 bootstrap'].includes(m.name))s[5]=5;
+if(err==='low'&&m.name==='E0 bootstrap')s[4]=2;
+return s}
+function total(s){return s.reduce((a,b)=>a+b,0)}
+function svgEl(n,a){let e=document.createElementNS('http://www.w3.org/2000/svg',n);for(const[k,v]of Object.entries(a||{}))e.setAttribute(k,v);return e}
+function addText(svg,x,y,t,c='#334155',z=12){let e=svgEl('text',{x,y,fill:c,'font-size':z});e.textContent=t;svg.appendChild(e)}
+function draw(){
+let svg=document.getElementById('parallel');svg.innerHTML='';let W=1000,H=530,L=80,R=45,T=55,B=65,step=(W-L-R)/(axes.length-1),y=v=>H-B-(v-1)/4*(H-T-B);
+axes.forEach((a,i)=>{let x=L+i*step;svg.appendChild(svgEl('line',{x1:x,y1:T,x2:x,y2:H-B,stroke:'#cbd5e1'}));a.split('\n').forEach((p,j)=>addText(svg,x-35,H-B+24+j*16,p));for(let v=1;v<=5;v++){svg.appendChild(svgEl('line',{x1:x-4,y1:y(v),x2:x+4,y2:y(v),stroke:'#94a3b8'}));if(i===0)addText(svg,x-25,y(v)+4,String(v),'#64748b',11)}});
+methods.forEach(m=>{if(!visible.has(m.name))return;let s=scores(m),pts=s.map((v,i)=>`${L+i*step},${y(v)}`).join(' ');svg.appendChild(svgEl('polyline',{points:pts,fill:'none',stroke:m.color,'stroke-width':4,opacity:.82}));s.forEach((v,i)=>svg.appendChild(svgEl('circle',{cx:L+i*step,cy:y(v),r:5,fill:m.color})))});
+let ranked=methods.map(m=>({m,s:scores(m)})).sort((a,b)=>total(b.s)-total(a.s)).slice(0,3);document.getElementById('results').innerHTML=ranked.map((x,i)=>`<div class="mini"><b>${i+1}. ${x.m.name}</b><p>${x.m.desc}</p><p><strong>Suitability:</strong> ${total(x.s)}/30</p></div>`).join('');
+let dep=depEl.value,goal=goalEl.value,msg=dep==='time'?'Use chronological blocked or rolling-origin splits; random CV can leak future information.':dep==='group'?'Keep all rows from one person/group in the same fold.':dep==='space'?'Use spatial blocks or leave-location-out.':dep==='imbalance'?'Use stratification so minority-class evidence appears in every fold.':goal==='final'?'Prefer an untouched final test set when data size allows.':'Use CV for comparison and retain a final independent test when possible.';
+document.getElementById('advice').innerHTML='<b>Main implication:</b> '+msg}
+[sizeEl,depEl,costEl,goalEl,errEl].forEach(e=>e.addEventListener('change',draw));
+document.getElementById('legend').innerHTML=methods.map(m=>`<span class="chip" data-name="${m.name}" style="border-color:${m.color};color:${m.color}">${m.name}</span>`).join('');
+document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{let n=c.dataset.name;if(visible.has(n)){visible.delete(n);c.classList.add('off')}else{visible.add(n);c.classList.remove('off')}draw()});
+draw();
+</script></body></html>

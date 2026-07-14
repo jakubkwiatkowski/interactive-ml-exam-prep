@@ -1,0 +1,1379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Interactive Guide: Statistical Significance Tests for ML Evaluation</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --bg2: #111827;
+      --card: #ffffff;
+      --card2: #f8fafc;
+      --ink: #0f172a;
+      --muted: #475569;
+      --line: #cbd5e1;
+      --accent: #2563eb;
+      --accent2: #0ea5e9;
+      --good: #059669;
+      --warn: #d97706;
+      --bad: #dc2626;
+      --shadow: 0 10px 30px rgba(15,23,42,.12);
+      --radius: 18px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top right, rgba(14,165,233,.18), transparent 24%),
+        radial-gradient(circle at top left, rgba(37,99,235,.14), transparent 22%),
+        linear-gradient(180deg, #eff6ff 0%, #f8fafc 25%, #f8fafc 100%);
+    }
+
+    .hero {
+      background: linear-gradient(135deg, var(--bg), var(--bg2));
+      color: white;
+      padding: 28px 24px 24px;
+      box-shadow: 0 4px 18px rgba(0,0,0,.16);
+    }
+    .hero-inner {
+      max-width: 1300px;
+      margin: 0 auto;
+      display: grid;
+      gap: 18px;
+    }
+    .hero h1 {
+      margin: 0;
+      font-size: clamp(28px, 4vw, 44px);
+      line-height: 1.05;
+      letter-spacing: -.02em;
+    }
+    .hero p {
+      margin: 0;
+      max-width: 1000px;
+      color: #dbeafe;
+      font-size: 1rem;
+      line-height: 1.55;
+    }
+    .pillbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 4px;
+    }
+    .pill {
+      padding: 6px 10px;
+      border: 1px solid rgba(255,255,255,.18);
+      border-radius: 999px;
+      font-size: .92rem;
+      color: #e0f2fe;
+      background: rgba(255,255,255,.06);
+    }
+
+    .page {
+      max-width: 1300px;
+      margin: 0 auto;
+      padding: 24px;
+      display: grid;
+      gap: 24px;
+    }
+
+    .section-card {
+      background: rgba(255,255,255,.88);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,.6);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+      padding: 24px;
+    }
+
+    .section-title {
+      margin: 0 0 8px;
+      font-size: 1.6rem;
+    }
+    .section-sub {
+      margin: 0 0 18px;
+      color: var(--muted);
+      line-height: 1.65;
+    }
+
+    .mini-grid,
+    .top-grid,
+    .cards-grid,
+    .twocol,
+    .threecol {
+      display: grid;
+      gap: 18px;
+    }
+    .top-grid { grid-template-columns: 1.25fr .95fr; }
+    .twocol { grid-template-columns: 1fr 1fr; }
+    .threecol { grid-template-columns: repeat(3, 1fr); }
+    .cards-grid { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+    .mini-grid { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+
+    .mini-card {
+      background: linear-gradient(180deg, #ffffff, #f8fbff);
+      border: 1px solid #dbeafe;
+      border-radius: var(--radius);
+      padding: 16px;
+    }
+    .mini-card h4 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+    .mini-card p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.55;
+      font-size: .95rem;
+    }
+
+    .flow {
+      display: grid;
+      gap: 14px;
+      align-items: center;
+    }
+    .flow-row {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 12px;
+      align-items: stretch;
+    }
+    .flow-box {
+      position: relative;
+      padding: 16px;
+      border-radius: 18px;
+      background: linear-gradient(180deg, #fff, #f8fafc);
+      border: 1px solid #cbd5e1;
+      min-height: 110px;
+    }
+    .flow-box .tag {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-size: .76rem;
+      font-weight: 700;
+      letter-spacing: .01em;
+      color: white;
+      background: var(--accent);
+      margin-bottom: 8px;
+    }
+    .flow-box h4 {
+      margin: 0 0 6px;
+      font-size: 1rem;
+    }
+    .flow-box p {
+      margin: 0;
+      color: var(--muted);
+      font-size: .92rem;
+      line-height: 1.45;
+    }
+    .arrowline {
+      height: 24px;
+      position: relative;
+    }
+    .arrowline::before {
+      content: "";
+      position: absolute;
+      left: 2%; right: 2%; top: 11px;
+      border-top: 2px dashed #93c5fd;
+    }
+    .arrowline::after {
+      content: "→";
+      position: absolute;
+      right: 0;
+      top: -2px;
+      color: var(--accent);
+      font-size: 1.3rem;
+    }
+
+    .hierarchy {
+      display: grid;
+      gap: 14px;
+    }
+    .hierarchy-row {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .node {
+      cursor: pointer;
+      padding: 14px 16px;
+      border-radius: 18px;
+      border: 1px solid #bfdbfe;
+      background: linear-gradient(180deg, #ffffff, #eff6ff);
+      min-width: 190px;
+      flex: 1 1 190px;
+      transition: .2s transform, .2s box-shadow, .2s border-color, .2s background;
+    }
+    .node:hover { transform: translateY(-2px); box-shadow: 0 12px 20px rgba(37,99,235,.12); }
+    .node.active {
+      border-color: var(--accent);
+      background: linear-gradient(180deg, #dbeafe, #eff6ff);
+      box-shadow: 0 0 0 3px rgba(37,99,235,.14);
+    }
+    .node strong { display: block; margin-bottom: 4px; }
+    .node small { color: var(--muted); line-height: 1.35; }
+    .connector {
+      flex: 0 0 26px;
+      text-align: center;
+      color: var(--accent);
+      font-size: 1.2rem;
+      font-weight: 700;
+    }
+
+    .controls {
+      display: grid;
+      gap: 14px;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      margin-top: 14px;
+    }
+    .control-card {
+      background: #f8fbff;
+      border: 1px solid #dbeafe;
+      border-radius: 18px;
+      padding: 14px;
+    }
+    .control-card label {
+      display: block;
+      font-size: .92rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .control-card select,
+    .control-card input[type="range"],
+    .control-card input[type="number"] {
+      width: 100%;
+    }
+    select, input[type="number"] {
+      border: 1px solid #cbd5e1;
+      border-radius: 12px;
+      padding: 10px 12px;
+      background: white;
+      color: var(--ink);
+      font-size: .95rem;
+    }
+
+    .recommendation {
+      padding: 16px;
+      border-radius: 18px;
+      background: linear-gradient(180deg, #f0fdf4, #ecfeff);
+      border: 1px solid #a7f3d0;
+      margin-top: 12px;
+    }
+    .recommendation strong { color: #065f46; }
+
+    .test-nav {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+    .chip {
+      border: 1px solid #cbd5e1;
+      background: white;
+      padding: 10px 14px;
+      border-radius: 999px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: .2s;
+    }
+    .chip.active,
+    .chip:hover { background: #dbeafe; border-color: #93c5fd; }
+
+    .test-layout {
+      display: grid;
+      grid-template-columns: 1.08fr .92fr;
+      gap: 20px;
+      align-items: start;
+    }
+    .test-card {
+      background: linear-gradient(180deg, #fff, #f8fafc);
+      border: 1px solid #dbeafe;
+      border-radius: 20px;
+      padding: 20px;
+    }
+    .test-card h3 { margin-top: 0; font-size: 1.45rem; }
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0,1fr));
+      gap: 10px;
+      margin: 16px 0;
+    }
+    .meta-box {
+      border: 1px solid #e2e8f0;
+      border-radius: 14px;
+      padding: 12px;
+      background: #fff;
+    }
+    .meta-box b { display: block; margin-bottom: 4px; }
+    .meta-box span { color: var(--muted); font-size: .94rem; line-height: 1.4; }
+
+    .equation {
+      background: #0b1220;
+      color: #e2e8f0;
+      border-radius: 18px;
+      padding: 14px 16px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      white-space: pre-wrap;
+      margin: 12px 0;
+      overflow-x: auto;
+      font-size: .98rem;
+    }
+    .plainlist { margin: 10px 0 0 1.1rem; padding: 0; }
+    .plainlist li { margin-bottom: 8px; line-height: 1.55; }
+    .callout {
+      padding: 14px 16px;
+      border-left: 4px solid var(--accent2);
+      background: #eff6ff;
+      border-radius: 14px;
+      color: #0f172a;
+      line-height: 1.55;
+      margin-top: 12px;
+    }
+    .warning {
+      border-left-color: var(--warn);
+      background: #fff7ed;
+    }
+    .danger {
+      border-left-color: var(--bad);
+      background: #fef2f2;
+    }
+    .good {
+      border-left-color: var(--good);
+      background: #ecfdf5;
+    }
+
+    .viz-card {
+      background: linear-gradient(180deg, #f8fbff, #fff);
+      border: 1px solid #dbeafe;
+      border-radius: 20px;
+      padding: 18px;
+      min-height: 100%;
+    }
+    .viz-title {
+      margin: 0 0 12px;
+      font-size: 1.1rem;
+    }
+    .viz-box {
+      border: 1px dashed #bfdbfe;
+      border-radius: 16px;
+      padding: 14px;
+      background: #fff;
+    }
+
+    .matrix {
+      display: grid;
+      grid-template-columns: 110px repeat(2, 1fr);
+      gap: 4px;
+      margin-top: 10px;
+      font-size: .92rem;
+    }
+    .matrix div {
+      border: 1px solid #dbeafe;
+      background: #f8fbff;
+      padding: 10px;
+      border-radius: 10px;
+      text-align: center;
+    }
+    .matrix .head { background: #dbeafe; font-weight: 700; }
+    .matrix .hot { background: #ecfeff; border-color: #67e8f9; }
+
+    .table-wrap { overflow-x: auto; }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      min-width: 720px;
+      background: white;
+      border-radius: 16px;
+      overflow: hidden;
+    }
+    th, td {
+      border: 1px solid #e2e8f0;
+      padding: 10px 12px;
+      text-align: left;
+      vertical-align: top;
+      font-size: .94rem;
+      line-height: 1.45;
+    }
+    th { background: #eff6ff; }
+    tr:nth-child(even) td { background: #f8fafc; }
+
+    .sliderrow {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      align-items: center;
+      margin: 12px 0 8px;
+    }
+    .sliderrow output {
+      min-width: 72px;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .rankbars {
+      display: grid;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .rankbar {
+      display: grid;
+      grid-template-columns: 120px 1fr 50px;
+      gap: 8px;
+      align-items: center;
+    }
+    .rankbar .bar {
+      height: 16px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #bfdbfe, #2563eb);
+    }
+    .legend {
+      font-size: .9rem;
+      color: var(--muted);
+      margin-top: 8px;
+      line-height: 1.55;
+    }
+
+    .quiz-item {
+      border: 1px solid #e2e8f0;
+      border-radius: 16px;
+      padding: 16px;
+      background: white;
+    }
+    .quiz-item h4 { margin: 0 0 8px; }
+    .reveal {
+      margin-top: 10px;
+      display: none;
+      padding: 12px;
+      border-radius: 12px;
+      background: #eff6ff;
+      color: #1e293b;
+      line-height: 1.55;
+    }
+    .btn {
+      cursor: pointer;
+      border: 0;
+      border-radius: 999px;
+      padding: 10px 14px;
+      background: var(--accent);
+      color: white;
+      font-weight: 700;
+    }
+    .smallnote {
+      color: var(--muted);
+      font-size: .9rem;
+      line-height: 1.5;
+    }
+
+    @media (max-width: 1050px) {
+      .top-grid, .test-layout, .flow-row, .twocol, .threecol { grid-template-columns: 1fr; }
+      .flow-row { display: flex; flex-direction: column; }
+      .matrix { grid-template-columns: 95px repeat(2,1fr); }
+    }
+    @media (max-width: 700px) {
+      .page { padding: 16px; }
+      .section-card { padding: 18px; }
+      .meta-grid { grid-template-columns: 1fr; }
+      .hero { position: static; }
+      .rankbar { grid-template-columns: 100px 1fr 40px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="hero">
+    <div class="hero-inner">
+      <h1>Interactive Guide: Statistical Significance Tests in Machine Learning Evaluation</h1>
+      <p>
+        This page is designed as an intuitive exam-oriented course. It connects <b>sampling / error estimation</b>
+        with <b>significance testing</b>, and it helps you answer the key question: <i>Which test should I use,
+        what exactly does it test, what is one observation, what assumptions matter, and what are the common traps?</i>
+      </p>
+      <div class="pillbar">
+        <div class="pill">NHST logic</div>
+        <div class="pill">one dataset vs many datasets</div>
+        <div class="pill">examples vs folds vs datasets</div>
+        <div class="pill">parametric vs non-parametric</div>
+        <div class="pill">McNemar, 5x2cv, corrected t, sign, Wilcoxon, Friedman, Nemenyi</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page">
+    <section class="section-card">
+      <h2 class="section-title">1. The main idea: sampling and significance testing are linked</h2>
+      <p class="section-sub">
+        The strongest idea from the tutorial is that the statistical test cannot be chosen independently of the evaluation design.
+        First you decide how to estimate performance (hold-out, cross-validation, repeated CV, fixed test set, many datasets), and only then can you decide what kind of statistical evidence you actually have.
+      </p>
+      <div class="top-grid">
+        <div>
+          <div class="flow">
+            <div class="flow-row">
+              <div class="flow-box">
+                <div class="tag">Step 1</div>
+                <h4>Scientific question</h4>
+                <p>"Is my new classifier better?" or "Do these algorithms differ at all?"</p>
+              </div>
+              <div class="flow-box">
+                <div class="tag">Step 2</div>
+                <h4>Evaluation design</h4>
+                <p>One dataset or many? Fixed test set or repeated resampling? Two classifiers or many?</p>
+              </div>
+              <div class="flow-box">
+                <div class="tag">Step 3</div>
+                <h4>Error estimation</h4>
+                <p>How did each score arise? Hold-out, k-fold CV, repeated CV, 5x2cv, bootstrap, etc.</p>
+              </div>
+              <div class="flow-box">
+                <div class="tag">Step 4</div>
+                <h4>Statistical unit</h4>
+                <p>What counts as one observation: one example, one split/run, or one dataset?</p>
+              </div>
+              <div class="flow-box">
+                <div class="tag">Step 5</div>
+                <h4>Significance test</h4>
+                <p>Choose a test whose target and assumptions match the design and statistical unit.</p>
+              </div>
+            </div>
+            <div class="arrowline"></div>
+          </div>
+        </div>
+        <div class="mini-grid">
+          <div class="mini-card">
+            <h4>Inside one dataset</h4>
+            <p>Cross-validation mainly helps you estimate a reliable score on that dataset. But fold results are usually <b>dependent</b>, because training sets overlap.</p>
+          </div>
+          <div class="mini-card">
+            <h4>Across many datasets</h4>
+            <p>In Demšar-style comparisons, the final statistical sample is the set of datasets. Cross-validation is used <b>inside each dataset</b> only to estimate a score.</p>
+          </div>
+          <div class="mini-card">
+            <h4>Exam trap</h4>
+            <p>"I used 10 datasets and 10-fold CV, so I have 100 independent observations." Usually false. For Wilcoxon/Friedman, the sample size is often the number of datasets.</p>
+          </div>
+          <div class="mini-card">
+            <h4>Guiding question</h4>
+            <p><b>What is one observation for the test?</b> Until you can answer that, do not choose a significance test.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section-card">
+      <h2 class="section-title">2. Interactive hierarchy: choose the test from the evaluation design</h2>
+      <p class="section-sub">
+        Click through the hierarchy or use the selectors below. This is the central exam skill: move from the experimental design to the appropriate family of tests.
+      </p>
+
+      <div class="hierarchy">
+        <div class="hierarchy-row">
+          <div class="node active" data-scope="one">
+            <strong>One practical dataset / one domain</strong>
+            <small>Example: one medical dataset, one image dataset, one spam dataset.</small>
+          </div>
+          <div class="connector">or</div>
+          <div class="node" data-scope="many">
+            <strong>Multiple datasets / multiple domains</strong>
+            <small>Example: 10–30 benchmark datasets, like a Demšar comparison table.</small>
+          </div>
+        </div>
+        <div class="hierarchy-row">
+          <div class="node active" data-k="two">
+            <strong>Two classifiers</strong>
+            <small>Example: baseline vs new method.</small>
+          </div>
+          <div class="connector">or</div>
+          <div class="node" data-k="many">
+            <strong>More than two classifiers</strong>
+            <small>Example: SVM, RF, kNN, NB, XGBoost.</small>
+          </div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <div class="control-card">
+          <label for="scopeSelect">1) Scope of comparison</label>
+          <select id="scopeSelect">
+            <option value="one">One dataset / one domain</option>
+            <option value="many">Multiple datasets / domains</option>
+          </select>
+        </div>
+        <div class="control-card">
+          <label for="kSelect">2) Number of classifiers</label>
+          <select id="kSelect">
+            <option value="two">Two classifiers</option>
+            <option value="many">More than two classifiers</option>
+          </select>
+        </div>
+        <div class="control-card">
+          <label for="evidenceSelect">3) What is your basic observation?</label>
+          <select id="evidenceSelect">
+            <option value="paired_examples">Paired predictions on the same test examples</option>
+            <option value="repeated_scores">Repeated train/test scores or repeated CV scores</option>
+            <option value="dataset_scores">One score per dataset per classifier</option>
+            <option value="dataset_ranks">Ranks of classifiers on each dataset</option>
+          </select>
+        </div>
+        <div class="control-card">
+          <label for="goalSelect">4) What do you want to know?</label>
+          <select id="goalSelect">
+            <option value="pair_difference">Is one classifier better than the other?</option>
+            <option value="any_difference">Is there any difference among classifiers?</option>
+            <option value="posthoc_all">Which pairs differ?</option>
+            <option value="posthoc_control">Which methods differ from a control?</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="recommendation" class="recommendation"></div>
+    </section>
+
+    <section class="section-card">
+      <h2 class="section-title">3. Interactive test explorer</h2>
+      <p class="section-sub">
+        Pick a test. For each one, you get: the intuition, what exactly is one observation, the formal null hypothesis,
+        what it is really testing, assumptions, when to use it, when to avoid it, common traps, and its connection to sampling.
+      </p>
+      <div id="testNav" class="test-nav"></div>
+      <div id="testDetail" class="test-layout"></div>
+    </section>
+
+    <section class="section-card">
+      <h2 class="section-title">4. One observation? This is often the whole exam.</h2>
+      <p class="section-sub">
+        Many errors in ML evaluation come from mixing levels. The table below is meant to make that distinction explicit.
+      </p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Scenario</th>
+              <th>What is one observation for the statistical test?</th>
+              <th>What produces each number?</th>
+              <th>Typical tests</th>
+              <th>Main trap</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Two classifiers on one fixed test set</td>
+              <td>One test example / one instance / one case</td>
+              <td>Paired correctness of both classifiers on the same example</td>
+              <td>McNemar</td>
+              <td>Thinking a “case” means a whole dataset. Here it means one test instance.</td>
+            </tr>
+            <tr>
+              <td>Two classifiers on one dataset with repeated splits</td>
+              <td>One repeated split / run (but note dependence issues)</td>
+              <td>Repeated train/test performance estimates</td>
+              <td>Corrected resampled t-test, 5x2cv t or F</td>
+              <td>Treating repeated splits as fully independent without correction.</td>
+            </tr>
+            <tr>
+              <td>Two classifiers on one dataset with k-fold CV</td>
+              <td>Fold-level scores are not safely independent</td>
+              <td>CV fold performance values</td>
+              <td>Be careful; avoid naive paired t-test over folds</td>
+              <td>Using a plain t-test over the k folds as if the folds were i.i.d.</td>
+            </tr>
+            <tr>
+              <td>Two classifiers over multiple datasets</td>
+              <td>One dataset-level difference</td>
+              <td>One reliable performance score per dataset per classifier (often from CV)</td>
+              <td>Sign test, Wilcoxon signed-rank</td>
+              <td>Multiplying by the number of folds and pretending you have more datasets.</td>
+            </tr>
+            <tr>
+              <td>Many classifiers over multiple datasets</td>
+              <td>One dataset with ranks of all classifiers</td>
+              <td>Performance table → rank each row</td>
+              <td>Friedman, then Nemenyi / Bonferroni-Dunn / Holm</td>
+              <td>Skipping the omnibus test or doing many uncorrected pairwise tests.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="section-card">
+      <h2 class="section-title">5. Parametric vs non-parametric: intuitive comparison</h2>
+      <p class="section-sub">
+        Parametric tests make stronger assumptions about the distributional form of the data or statistic.
+        Non-parametric tests usually rely on fewer assumptions and often work with counts, signs, or ranks.
+      </p>
+      <div class="twocol">
+        <div class="test-card">
+          <h3>Parametric</h3>
+          <ul class="plainlist">
+            <li><b>Examples:</b> paired t-test, repeated-measures ANOVA, corrected resampled t-test, 5x2cv t/F.</li>
+            <li><b>Typical target:</b> mean difference or variance decomposition.</li>
+            <li><b>Typical assumptions:</b> normality (often of differences), meaningful numerical scale, sometimes homogeneity/sphericity.</li>
+            <li><b>Strength:</b> can be more powerful when assumptions are truly reasonable.</li>
+            <li><b>Risk:</b> if assumptions are wrong, p-values can mislead you.</li>
+          </ul>
+          <div class="callout">Intuition: you trust the actual numeric values enough to model their behavior more strongly.</div>
+        </div>
+        <div class="test-card">
+          <h3>Non-parametric</h3>
+          <ul class="plainlist">
+            <li><b>Examples:</b> McNemar, sign test, Wilcoxon signed-rank, Friedman, Nemenyi.</li>
+            <li><b>Typical target:</b> wins/losses, signs, ranks, rank differences.</li>
+            <li><b>Typical assumptions:</b> usually weaker; often only independence of the chosen observations and sensible ordering/ranking.</li>
+            <li><b>Strength:</b> more robust when numerical differences are not safely commensurable or normality is doubtful.</li>
+            <li><b>Risk:</b> sometimes less powerful, and sometimes it answers a slightly different question than the mean-difference question.</li>
+          </ul>
+          <div class="callout good">Intuition: you give up some numerical detail to gain robustness and safety.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section-card">
+      <h2 class="section-title">6. Exam-style self-check</h2>
+      <p class="section-sub">Use these as quick oral-exam drills. Try answering before revealing the solution.</p>
+      <div class="cards-grid">
+        <div class="quiz-item">
+          <h4>Q1. I have 15 datasets and on each I used 10-fold CV. What is the sample size for Wilcoxon?</h4>
+          <button class="btn" onclick="toggleReveal('r1')">Reveal answer</button>
+          <div id="r1" class="reveal">Usually <b>15</b>, not 150. The 10 folds help estimate one performance value per dataset. Wilcoxon compares the 15 paired dataset-level differences.</div>
+        </div>
+        <div class="quiz-item">
+          <h4>Q2. In McNemar’s test, what is one case?</h4>
+          <button class="btn" onclick="toggleReveal('r2')">Reveal answer</button>
+          <div id="r2" class="reveal">One <b>test example / instance</b> from the same practical dataset. Example: one patient, one email, one image. The test compares how the two classifiers behave on that example.</div>
+        </div>
+        <div class="quiz-item">
+          <h4>Q3. Why is naive paired t-test over CV folds dangerous?</h4>
+          <button class="btn" onclick="toggleReveal('r3')">Reveal answer</button>
+          <div id="r3" class="reveal">Because folds are not safely independent as observations for the test. The training sets overlap, so the variance may be underestimated and Type I error inflated.</div>
+        </div>
+        <div class="quiz-item">
+          <h4>Q4. Friedman is significant, but Nemenyi finds no pairwise differences. Contradiction?</h4>
+          <button class="btn" onclick="toggleReveal('r4')">Reveal answer</button>
+          <div id="r4" class="reveal">No contradiction. Friedman is an omnibus test: it says some difference exists. A post-hoc test may still lack enough power to identify which exact pairs differ.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section-card">
+      <h2 class="section-title">7. Final exam mental checklist</h2>
+      <div class="threecol">
+        <div class="mini-card">
+          <h4>Ask 1: What is one observation?</h4>
+          <p>One test example? One repeated split? One dataset? This decides the whole test family.</p>
+        </div>
+        <div class="mini-card">
+          <h4>Ask 2: What does “no difference” mean here?</h4>
+          <p>Equal disagreement counts? Zero mean difference? Equal win probability? Equal ranks?</p>
+        </div>
+        <div class="mini-card">
+          <h4>Ask 3: Are the observations independent enough?</h4>
+          <p>Especially important for repeated splits and CV folds.</p>
+        </div>
+        <div class="mini-card">
+          <h4>Ask 4: One dataset or many?</h4>
+          <p>Single-domain tests and multiple-dataset tests answer different scientific questions.</p>
+        </div>
+        <div class="mini-card">
+          <h4>Ask 5: Two classifiers or many?</h4>
+          <p>Pairwise tests are not a substitute for an omnibus test when many classifiers are compared.</p>
+        </div>
+        <div class="mini-card">
+          <h4>Ask 6: Is this all-vs-all or vs a control?</h4>
+          <p>That decides whether Nemenyi or control-focused procedures like Bonferroni-Dunn/Holm are more appropriate.</p>
+        </div>
+      </div>
+      <p class="smallnote" style="margin-top:18px;">
+        Built as an intuitive study guide based on the ICML tutorial section on significance testing and Demšar’s recommendations for comparisons over multiple datasets.
+      </p>
+    </section>
+  </div>
+
+  <script>
+    const tests = [
+      {
+        id: 'mcnemar',
+        name: 'McNemar test',
+        short: 'Two classifiers on one fixed test set',
+        useWhen: 'You have two classifiers evaluated on the same test examples from one practical dataset.',
+        unit: 'One test example / one instance / one case.',
+        input: 'Paired correctness outcomes of both classifiers on the same test set.',
+        h0: 'Among the examples where the classifiers disagree, each classifier wins equally often: c01 = c10.',
+        intuition: 'Ignore examples where both classifiers behave the same. Focus only on disagreement cases. Ask: when they disagree, does one classifier win much more often?',
+        assumptions: 'Paired outcomes on the same examples; enough disagreement counts for chi-square approximation (or use exact version when counts are small).',
+        avoid: 'Do not use it as a many-dataset comparison method. It is about one domain / one dataset.',
+        sampling: 'Sampling link: this fits a fixed test set design. The statistical unit is the example, not the dataset or CV fold.',
+        eq: 'H0: c01 = c10\nchi^2 = ((|c01 - c10| - 1)^2) / (c01 + c10)',
+        trap: 'Exam trap: “case” here means one example, not one dataset.',
+        viz: 'mcnemar'
+      },
+      {
+        id: 'paired_t',
+        name: 'Paired t-test',
+        short: 'Two matched performance samples',
+        useWhen: 'You have paired performance values and you are specifically testing whether the mean difference is zero. In ML, this is often tempting but must be used carefully.',
+        unit: 'One paired trial / run / dataset-level paired score difference, depending on design.',
+        input: 'Differences d_i between paired performance values.',
+        h0: 'The mean difference is zero: mu_d = 0.',
+        intuition: 'Take the average difference and scale it by how noisy that average is. Large signal relative to noise gives a large t-statistic.',
+        assumptions: 'Differences should be approximately normal or sample large enough; paired observations should be appropriate; numerical differences should be meaningful.',
+        avoid: 'Avoid naive use over ordinary CV folds as if those folds were i.i.d. observations.',
+        sampling: 'Sampling link: the validity depends heavily on how the paired samples were produced. Repeated CV / overlapping folds complicate independence.',
+        eq: 't = d_bar / (s_d / sqrt(n))',
+        trap: 'Exam trap: a t-test over CV folds can be conceptually and statistically unsafe because of dependence.',
+        viz: 't'
+      },
+      {
+        id: 'corrected_t',
+        name: 'Corrected resampled t-test',
+        short: 'Two classifiers on one dataset with repeated random splits',
+        useWhen: 'You compare two classifiers on one dataset using repeated train/test splits and want a t-type test that adjusts for dependence.',
+        unit: 'One repeated split result, with correction for overlap dependence.',
+        input: 'Repeated performance differences over multiple random splits.',
+        h0: 'The expected difference is zero.',
+        intuition: 'Like a paired t-test, but it inflates the variance term to acknowledge that repeated splits are not independent.',
+        assumptions: 'Still a parametric mean-difference test, but safer than a naive t-test after repeated resampling.',
+        avoid: 'Not the main tool for multiple-dataset Demšar-style comparisons.',
+        sampling: 'Sampling link: directly tied to the resampling design; it exists precisely because the resampling outputs are dependent.',
+        eq: 't-like statistic using corrected variance for overlap between training/testing subsets',
+        trap: 'Exam trap: do not confuse it with Wilcoxon over multiple datasets. Different design, different level.',
+        viz: 'corrected'
+      },
+      {
+        id: '5x2cv',
+        name: '5x2cv t/F tests',
+        short: 'Two classifiers on one dataset with 5 replications of 2-fold CV',
+        useWhen: 'You compare two classifiers on one dataset and can afford repeated 2-fold CV; especially when focusing on one-domain comparison.',
+        unit: 'One of the 10 scores from the 5 × 2-fold scheme, combined in a special statistic.',
+        input: 'Differences from five repetitions of 2-fold cross-validation.',
+        h0: 'The two classifiers have equal expected performance on that dataset.',
+        intuition: 'Use a carefully designed resampling scheme to get a more trustworthy estimate of variability than ordinary k-fold CV t-tests.',
+        assumptions: 'Still a parametric family, but explicitly designed around the dependence issue in repeated CV-like evaluation.',
+        avoid: 'Not the tool for “many datasets, many classifiers” studies.',
+        sampling: 'Sampling link: this test is inseparable from its resampling design. The design is part of the test.',
+        eq: 'special t or F statistic built from 5 repetitions of 2-fold CV differences',
+        trap: 'Exam trap: 5x2cv is about one dataset, not about comparing many benchmark datasets.',
+        viz: '5x2'
+      },
+      {
+        id: 'sign',
+        name: 'Sign test',
+        short: 'Two classifiers over multiple datasets',
+        useWhen: 'You compare two classifiers over multiple independent datasets and care only about which one wins on each dataset.',
+        unit: 'One dataset/domain.',
+        input: 'For each dataset: classifier 1 wins, classifier 2 wins, or tie.',
+        h0: 'Each classifier is equally likely to win on a dataset: p(win) = 0.5.',
+        intuition: 'Ignore magnitudes. Treat each dataset as a coin flip under the null. If one classifier wins too many datasets, reject.',
+        assumptions: 'Independent datasets; only win/loss information is used.',
+        avoid: 'Weak if you actually have informative magnitude differences and want to use them.',
+        sampling: 'Sampling link: one score per dataset per classifier, often estimated by CV inside each dataset; the test itself works at the dataset level.',
+        eq: 'X ~ Binomial(N, 0.5) under H0',
+        trap: 'Exam trap: one Bernoulli trial = one dataset, not one fold and not one example.',
+        viz: 'sign'
+      },
+      {
+        id: 'wilcoxon',
+        name: 'Wilcoxon signed-rank test',
+        short: 'Recommended by Demšar for two classifiers over multiple datasets',
+        useWhen: 'You compare two classifiers over multiple independent datasets and want a safer, more informative alternative to the sign test.',
+        unit: 'One dataset-level paired difference.',
+        input: 'For each dataset: d_i = score_i(f2) - score_i(f1). Rank the absolute differences and restore the signs.',
+        h0: 'The paired differences are symmetrically centered around zero / there is no systematic signed-rank advantage.',
+        intuition: 'The sign test asks who wins more often. Wilcoxon asks whether the larger differences mostly point in one direction.',
+        assumptions: 'Independent datasets; differences should be rankable; fewer assumptions than the t-test.',
+        avoid: 'Do not interpret it as if it were testing exactly the same thing as a mean-difference t-test.',
+        sampling: 'Sampling link: the observations are datasets; CV is used only to estimate each dataset-level score reliably.',
+        eq: 'Rank |d_i|, compute R+ and R-, then T = min(R+, R-)',
+        trap: 'Exam trap: sample size N here means number of datasets.',
+        viz: 'wilcoxon'
+      },
+      {
+        id: 'anova',
+        name: 'Repeated-measures ANOVA',
+        short: 'Parametric omnibus test for many classifiers over multiple datasets',
+        useWhen: 'You compare more than two classifiers across the same datasets and are willing to rely on stronger parametric assumptions.',
+        unit: 'One dataset with repeated measurements for all classifiers.',
+        input: 'Performance table for all classifiers across datasets.',
+        h0: 'All classifiers have the same expected mean performance.',
+        intuition: 'Decompose variability into classifier effect, dataset effect, and residual error. Ask whether the between-classifier variability is too large to be random.',
+        assumptions: 'Normality and repeated-measures assumptions such as sphericity/homogeneity-like conditions.',
+        avoid: 'Often avoided in typical ML benchmark studies because assumptions are doubtful.',
+        sampling: 'Sampling link: works at the multiple-dataset level, but assumes more about the distributional structure than Friedman.',
+        eq: 'F statistic from repeated-measures ANOVA decomposition',
+        trap: 'Exam trap: ANOVA is an omnibus test. By itself it does not tell you which pair differs.',
+        viz: 'anova'
+      },
+      {
+        id: 'friedman',
+        name: 'Friedman test',
+        short: 'Recommended omnibus test for many classifiers over multiple datasets',
+        useWhen: 'You compare more than two classifiers over multiple datasets and want a robust non-parametric omnibus test.',
+        unit: 'One dataset with ranks assigned to all classifiers.',
+        input: 'For each dataset, rank the classifiers; then compare average ranks.',
+        h0: 'All classifiers are equivalent, so their expected ranks are equal.',
+        intuition: 'Do not compare raw scores directly. Instead, ask whether one classifier keeps getting unusually good ranks across datasets.',
+        assumptions: 'Independent datasets; rank-based comparison; fewer assumptions than ANOVA.',
+        avoid: 'Do not use it to directly identify which pair differs. It is an omnibus test.',
+        sampling: 'Sampling link: one reliable score per dataset per classifier, then ranking within each dataset.',
+        eq: 'chi_F^2 = (12N / (k(k+1))) * [sum_j R_j^2 - k(k+1)^2/4]\nOften improved with Iman-Davenport F_F',
+        trap: 'Exam trap: a significant Friedman result only says that some difference exists somewhere.',
+        viz: 'friedman'
+      },
+      {
+        id: 'nemenyi',
+        name: 'Nemenyi post-hoc test',
+        short: 'All-vs-all post-hoc comparison after Friedman',
+        useWhen: 'Friedman rejected the null, and you want all pairwise classifier comparisons.',
+        unit: 'Average-rank differences between classifier pairs.',
+        input: 'Average ranks from the Friedman setup.',
+        h0: 'Any given pair of classifiers does not differ more than expected by chance after correction for multiple comparisons.',
+        intuition: 'Two classifiers are significantly different if their average ranks are far enough apart.',
+        assumptions: 'Used after Friedman in all-vs-all comparison setting.',
+        avoid: 'If you only care about comparing all methods to one control, there are often more powerful alternatives.',
+        sampling: 'Sampling link: inherits the Friedman multiple-dataset rank framework.',
+        eq: 'CD = q_alpha * sqrt(k(k+1)/(6N))\nSignificant if |R_i - R_j| > CD',
+        trap: 'Exam trap: Nemenyi is not the omnibus test. It is the post-hoc step.',
+        viz: 'nemenyi'
+      },
+      {
+        id: 'control_posthoc',
+        name: 'Bonferroni-Dunn / Holm (vs control)',
+        short: 'Post-hoc tests when one method is the control',
+        useWhen: 'You compare several classifiers against one control classifier after the omnibus stage or in a control-focused design.',
+        unit: 'Rank difference between each classifier and the control.',
+        input: 'Average ranks and p-values for control-vs-others comparisons.',
+        h0: 'Each classifier is not significantly different from the control.',
+        intuition: 'If you only care about “new method vs baselines”, do not spend power on all pairwise comparisons.',
+        assumptions: 'Same multiple-dataset framework as Friedman-based post-hoc analysis.',
+        avoid: 'Do not use all-vs-all Nemenyi if your real scientific question is only control-vs-rest.',
+        sampling: 'Sampling link: again inherits the dataset-level rank comparison setup.',
+        eq: 'Bonferroni-Dunn uses adjusted alpha or equivalent CD; Holm uses ordered p-values with step-down rejection.',
+        trap: 'Exam trap: all-vs-all and control-vs-rest are different inferential problems.',
+        viz: 'control'
+      }
+    ];
+
+    let currentTest = 'mcnemar';
+
+    function buildTestNav() {
+      const nav = document.getElementById('testNav');
+      nav.innerHTML = '';
+      tests.forEach(t => {
+        const b = document.createElement('button');
+        b.className = 'chip' + (t.id === currentTest ? ' active' : '');
+        b.textContent = t.name;
+        b.onclick = () => { currentTest = t.id; buildTestNav(); renderTest(); };
+        nav.appendChild(b);
+      });
+    }
+
+    function renderTest() {
+      const t = tests.find(x => x.id === currentTest);
+      const detail = document.getElementById('testDetail');
+      detail.innerHTML = `
+        <div class="test-card">
+          <h3>${t.name}</h3>
+          <p><b>Short description:</b> ${t.short}</p>
+          <div class="meta-grid">
+            <div class="meta-box"><b>Use when</b><span>${t.useWhen}</span></div>
+            <div class="meta-box"><b>One observation</b><span>${t.unit}</span></div>
+            <div class="meta-box"><b>Input to the test</b><span>${t.input}</span></div>
+            <div class="meta-box"><b>Null hypothesis</b><span>${t.h0}</span></div>
+          </div>
+          <div class="callout"><b>Intuition:</b> ${t.intuition}</div>
+          <div class="equation">${t.eq}</div>
+          <div class="callout good"><b>Assumptions / why it may be appropriate:</b> ${t.assumptions}</div>
+          <div class="callout warning"><b>When not to use / what to be careful about:</b> ${t.avoid}</div>
+          <div class="callout"><b>Connection to sampling / error estimation:</b> ${t.sampling}</div>
+          <div class="callout danger"><b>Common exam trap:</b> ${t.trap}</div>
+        </div>
+        <div class="viz-card">
+          <h4 class="viz-title">Interactive intuition</h4>
+          ${renderViz(t.viz)}
+        </div>
+      `;
+      postRenderViz(t.viz);
+    }
+
+    function renderViz(kind) {
+      if (kind === 'mcnemar') {
+        return `
+          <div class="viz-box">
+            <p><b>Move the two disagreement counts.</b> McNemar cares mostly about <code>c01</code> and <code>c10</code>.</p>
+            <div class="sliderrow"><label>c01 = classifier 1 wrong, classifier 2 correct</label><output id="mc01Out">15</output></div>
+            <input id="mc01" type="range" min="0" max="60" value="15" />
+            <div class="sliderrow"><label>c10 = classifier 1 correct, classifier 2 wrong</label><output id="mc10Out">5</output></div>
+            <input id="mc10" type="range" min="0" max="60" value="5" />
+            <div class="matrix">
+              <div class="head"></div><div class="head">Classifier 2 correct</div><div class="head">Classifier 2 wrong</div>
+              <div class="head">Classifier 1 correct</div><div>both correct</div><div class="hot">c10 = <span id="mc10Cell">5</span></div>
+              <div class="head">Classifier 1 wrong</div><div class="hot">c01 = <span id="mc01Cell">15</span></div><div>both wrong</div>
+            </div>
+            <p class="legend" id="mcResult"></p>
+          </div>`;
+      }
+      if (kind === 't') {
+        return `
+          <div class="viz-box">
+            <p><b>Paired t-test intuition:</b> signal divided by uncertainty of the mean difference.</p>
+            <div class="sliderrow"><label>Mean difference d̄</label><output id="tdOut">0.020</output></div>
+            <input id="td" type="range" min="-0.2" max="0.2" step="0.001" value="0.02" />
+            <div class="sliderrow"><label>Standard deviation of differences s_d</label><output id="tsdOut">0.100</output></div>
+            <input id="tsd" type="range" min="0.01" max="0.3" step="0.001" value="0.10" />
+            <div class="sliderrow"><label>Number of paired observations n</label><output id="tnOut">25</output></div>
+            <input id="tn" type="range" min="5" max="100" step="1" value="25" />
+            <p class="legend" id="tResult"></p>
+          </div>`;
+      }
+      if (kind === 'corrected') {
+        return `
+          <div class="viz-box">
+            <p><b>Main idea:</b> repeated splits overlap, so a naive standard error is too optimistic. The correction increases the uncertainty.</p>
+            <div class="sliderrow"><label>Naive standard error</label><output id="cseOut">0.010</output></div>
+            <input id="cse" type="range" min="0.001" max="0.1" step="0.001" value="0.01" />
+            <div class="sliderrow"><label>Inflation factor due to dependence</label><output id="cinfOut">2.00</output></div>
+            <input id="cinf" type="range" min="1" max="5" step="0.1" value="2" />
+            <p class="legend" id="correctedResult"></p>
+          </div>`;
+      }
+      if (kind === '5x2') {
+        return `
+          <div class="viz-box">
+            <p><b>5x2cv intuition:</b> you repeat 2-fold CV five times, giving 10 fold-level differences, but the test combines them in a specific way instead of treating ordinary k-fold CV naively.</p>
+            <div class="table-wrap">
+              <table style="min-width:0;">
+                <thead><tr><th>Repetition</th><th>Fold 1</th><th>Fold 2</th></tr></thead>
+                <tbody>
+                  <tr><td>1</td><td>diff₁₁</td><td>diff₁₂</td></tr>
+                  <tr><td>2</td><td>diff₂₁</td><td>diff₂₂</td></tr>
+                  <tr><td>3</td><td>diff₃₁</td><td>diff₃₂</td></tr>
+                  <tr><td>4</td><td>diff₄₁</td><td>diff₄₂</td></tr>
+                  <tr><td>5</td><td>diff₅₁</td><td>diff₅₂</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p class="legend">The important lesson is conceptual: the resampling scheme is part of the test design.</p>
+          </div>`;
+      }
+      if (kind === 'sign') {
+        return `
+          <div class="viz-box">
+            <p><b>Sign test intuition:</b> each dataset is a win/loss trial under H0 with probability 0.5.</p>
+            <div class="sliderrow"><label>Number of datasets N</label><output id="signNOut">14</output></div>
+            <input id="signN" type="range" min="5" max="50" step="1" value="14" />
+            <div class="sliderrow"><label>Number of wins for classifier 2</label><output id="signWOut">11</output></div>
+            <input id="signW" type="range" min="0" max="50" step="1" value="11" />
+            <p class="legend" id="signResult"></p>
+          </div>`;
+      }
+      if (kind === 'wilcoxon') {
+        return `
+          <div class="viz-box">
+            <p><b>Choose a preset.</b> Watch how Wilcoxon uses ranks of absolute differences, not only win counts.</p>
+            <select id="wilPreset">
+              <option value="balanced">Balanced + and - differences</option>
+              <option value="largePos">Large positive wins, tiny negative losses</option>
+              <option value="largeNeg">Large negative losses, tiny positive wins</option>
+            </select>
+            <div id="wilTable" style="margin-top:12px;"></div>
+            <p class="legend" id="wilResult"></p>
+          </div>`;
+      }
+      if (kind === 'anova') {
+        return `
+          <div class="viz-box">
+            <p><b>ANOVA intuition:</b> compare variability between classifiers to residual/error variability.</p>
+            <div class="sliderrow"><label>Between-classifier variability</label><output id="abOut">12</output></div>
+            <input id="ab" type="range" min="1" max="40" value="12" />
+            <div class="sliderrow"><label>Error/residual variability</label><output id="aeOut">4</output></div>
+            <input id="ae" type="range" min="1" max="40" value="4" />
+            <p class="legend" id="anovaResult"></p>
+          </div>`;
+      }
+      if (kind === 'friedman') {
+        return `
+          <div class="viz-box">
+            <p><b>Friedman intuition:</b> each dataset gives ranks, then we compare the average ranks.</p>
+            <div class="sliderrow"><label>Number of datasets N</label><output id="frNOut">14</output></div>
+            <input id="frN" type="range" min="5" max="50" step="1" value="14" />
+            <div class="sliderrow"><label>Number of classifiers k</label><output id="frKOut">4</output></div>
+            <input id="frK" type="range" min="3" max="10" step="1" value="4" />
+            <p class="legend">Expected average rank under H0 is (k+1)/2. If one method persistently gets much better ranks, Friedman becomes significant.</p>
+            <p class="legend" id="friedmanResult"></p>
+          </div>`;
+      }
+      if (kind === 'nemenyi') {
+        return `
+          <div class="viz-box">
+            <p><b>Nemenyi intuition:</b> compare average ranks with a critical difference (CD).</p>
+            <div class="sliderrow"><label>Number of datasets N</label><output id="neNOut">14</output></div>
+            <input id="neN" type="range" min="5" max="50" step="1" value="14" />
+            <div class="sliderrow"><label>Number of classifiers k</label><output id="neKOut">4</output></div>
+            <input id="neK" type="range" min="3" max="10" step="1" value="4" />
+            <div class="sliderrow"><label>Difference in average ranks |Ri - Rj|</label><output id="neDOut">1.20</output></div>
+            <input id="neD" type="range" min="0" max="4" step="0.01" value="1.2" />
+            <p class="legend" id="nemenyiResult"></p>
+          </div>`;
+      }
+      if (kind === 'control') {
+        return `
+          <div class="viz-box">
+            <p><b>Control-vs-rest intuition:</b> if your real scientific question is “is my method better than the baselines?”, you usually gain power by comparing each baseline only with the control, not all pairs.</p>
+            <div class="rankbars">
+              <div class="rankbar"><span>Control</span><div class="bar" style="width:45%"></div><span>2.0</span></div>
+              <div class="rankbar"><span>Baseline A</span><div class="bar" style="width:65%"></div><span>2.8</span></div>
+              <div class="rankbar"><span>Baseline B</span><div class="bar" style="width:88%"></div><span>3.6</span></div>
+              <div class="rankbar"><span>Baseline C</span><div class="bar" style="width:54%"></div><span>2.3</span></div>
+            </div>
+            <p class="legend">Compare each baseline with the control using adjusted α or ordered p-values (e.g., Holm step-down).</p>
+          </div>`;
+      }
+      return `<div class="viz-box">No visual available.</div>`;
+    }
+
+    function postRenderViz(kind) {
+      if (kind === 'mcnemar') {
+        ['mc01','mc10'].forEach(id => document.getElementById(id).addEventListener('input', updateMcNemar));
+        updateMcNemar();
+      }
+      if (kind === 't') {
+        ['td','tsd','tn'].forEach(id => document.getElementById(id).addEventListener('input', updateT));
+        updateT();
+      }
+      if (kind === 'corrected') {
+        ['cse','cinf'].forEach(id => document.getElementById(id).addEventListener('input', updateCorrected));
+        updateCorrected();
+      }
+      if (kind === 'sign') {
+        document.getElementById('signN').addEventListener('input', updateSign);
+        document.getElementById('signW').addEventListener('input', syncSignWAndUpdate);
+        updateSignMax(); updateSign();
+      }
+      if (kind === 'wilcoxon') {
+        document.getElementById('wilPreset').addEventListener('change', updateWilcoxon);
+        updateWilcoxon();
+      }
+      if (kind === 'anova') {
+        ['ab','ae'].forEach(id => document.getElementById(id).addEventListener('input', updateAnova));
+        updateAnova();
+      }
+      if (kind === 'friedman') {
+        ['frN','frK'].forEach(id => document.getElementById(id).addEventListener('input', updateFriedman));
+        updateFriedman();
+      }
+      if (kind === 'nemenyi') {
+        ['neN','neK','neD'].forEach(id => document.getElementById(id).addEventListener('input', updateNemenyi));
+        updateNemenyi();
+      }
+    }
+
+    function updateMcNemar() {
+      const c01 = +document.getElementById('mc01').value;
+      const c10 = +document.getElementById('mc10').value;
+      document.getElementById('mc01Out').value = c01;
+      document.getElementById('mc10Out').value = c10;
+      document.getElementById('mc01Cell').textContent = c01;
+      document.getElementById('mc10Cell').textContent = c10;
+      const denom = c01 + c10;
+      const chi = denom === 0 ? 0 : Math.pow(Math.abs(c01 - c10) - 1, 2) / denom;
+      let msg = `McNemar χ² ≈ ${chi.toFixed(3)}. `;
+      msg += `If c01 and c10 are similar, the statistic stays small. If one disagreement direction dominates, it grows.`;
+      if (denom < 20) msg += ` Here c01 + c10 = ${denom}, so the chi-square approximation may be shaky; exact McNemar is often safer.`;
+      else msg += ` Here c01 + c10 = ${denom}, so the chi-square approximation is more comfortable.`;
+      document.getElementById('mcResult').textContent = msg;
+    }
+
+    function updateT() {
+      const d = +document.getElementById('td').value;
+      const sd = +document.getElementById('tsd').value;
+      const n = +document.getElementById('tn').value;
+      document.getElementById('tdOut').value = d.toFixed(3);
+      document.getElementById('tsdOut').value = sd.toFixed(3);
+      document.getElementById('tnOut').value = n;
+      const se = sd / Math.sqrt(n);
+      const t = d / se;
+      const cohen = d / sd;
+      document.getElementById('tResult').textContent = `Standard error = s_d / √n = ${se.toFixed(4)}. t = ${t.toFixed(3)}. Cohen-like effect size d/s_d = ${cohen.toFixed(3)}. Notice: increasing n shrinks the standard error, so even a small effect can become statistically significant.`;
+    }
+
+    function updateCorrected() {
+      const se = +document.getElementById('cse').value;
+      const inf = +document.getElementById('cinf').value;
+      document.getElementById('cseOut').value = se.toFixed(3);
+      document.getElementById('cinfOut').value = inf.toFixed(2);
+      const corrected = se * inf;
+      document.getElementById('correctedResult').textContent = `Corrected standard error ≈ ${corrected.toFixed(4)}. The message is conceptual: dependence makes uncertainty larger than the naive formula suggests.`;
+    }
+
+    function updateSignMax() {
+      const N = +document.getElementById('signN').value;
+      const w = document.getElementById('signW');
+      w.max = N;
+      if (+w.value > N) w.value = N;
+    }
+    function syncSignWAndUpdate() { updateSign(); }
+    function updateSign() {
+      updateSignMax();
+      const N = +document.getElementById('signN').value;
+      const wins = +document.getElementById('signW').value;
+      document.getElementById('signNOut').value = N;
+      document.getElementById('signWOut').value = wins;
+      const threshold = (N / 2) + 1.96 * Math.sqrt(N) / 2;
+      const approx = wins >= threshold;
+      document.getElementById('signResult').textContent = `Under H0, each dataset is like a fair coin flip. Approximate two-sided rejection region at α≈0.05 starts when wins are roughly at least ${threshold.toFixed(2)} (rule-of-thumb style). Here: ${wins} wins out of ${N} datasets → ${approx ? 'looks unusually one-sided.' : 'does not look extreme enough.'}`;
+    }
+
+    function averageRanksFromDiffs(diffs) {
+      const arr = diffs.map((d,i) => ({i, d, abs: Math.abs(d)})).sort((a,b) => a.abs - b.abs);
+      const ranks = Array(diffs.length).fill(0);
+      let r = 1;
+      for (let i=0; i<arr.length; ) {
+        let j = i;
+        while (j < arr.length && arr[j].abs === arr[i].abs) j++;
+        const avgRank = (r + (r + (j-i) - 1)) / 2;
+        for (let k=i; k<j; k++) ranks[arr[k].i] = avgRank;
+        r += (j - i);
+        i = j;
+      }
+      return ranks;
+    }
+
+    function updateWilcoxon() {
+      const preset = document.getElementById('wilPreset').value;
+      let diffs;
+      if (preset === 'balanced') diffs = [0.03, -0.02, 0.01, -0.04, 0.02, -0.01];
+      if (preset === 'largePos') diffs = [0.15, 0.12, 0.08, -0.01, -0.02, 0.10];
+      if (preset === 'largeNeg') diffs = [-0.14, -0.12, -0.09, 0.01, 0.02, -0.07];
+      const ranks = averageRanksFromDiffs(diffs);
+      let Rp = 0, Rm = 0;
+      const rows = diffs.map((d, idx) => {
+        if (d > 0) Rp += ranks[idx];
+        else if (d < 0) Rm += ranks[idx];
+        return `<tr><td>D${idx+1}</td><td>${d.toFixed(2)}</td><td>${Math.abs(d).toFixed(2)}</td><td>${ranks[idx].toFixed(1)}</td><td>${d>0?'+':'-'}${ranks[idx].toFixed(1)}</td></tr>`;
+      }).join('');
+      document.getElementById('wilTable').innerHTML = `<div class="table-wrap"><table style="min-width:0;"><thead><tr><th>Dataset</th><th>d_i</th><th>|d_i|</th><th>Rank</th><th>Signed rank</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+      const T = Math.min(Rp, Rm);
+      document.getElementById('wilResult').textContent = `R+ = ${Rp.toFixed(1)}, R- = ${Rm.toFixed(1)}, T = min(R+, R-) = ${T.toFixed(1)}. Compare this with the sign test idea: Wilcoxon notices not only who wins, but whether the larger absolute differences mostly go in one direction.`;
+    }
+
+    function updateAnova() {
+      const b = +document.getElementById('ab').value;
+      const e = +document.getElementById('ae').value;
+      document.getElementById('abOut').value = b;
+      document.getElementById('aeOut').value = e;
+      const F = b / e;
+      document.getElementById('anovaResult').textContent = `Simple intuition: F = between / error = ${F.toFixed(2)}. If between-classifier variability is much larger than residual variability, the data argue against the null that all classifiers have the same mean.`;
+    }
+
+    function updateFriedman() {
+      const N = +document.getElementById('frN').value;
+      const k = +document.getElementById('frK').value;
+      document.getElementById('frNOut').value = N;
+      document.getElementById('frKOut').value = k;
+      const expected = (k + 1) / 2;
+      document.getElementById('friedmanResult').textContent = `With k = ${k}, the expected average rank under H0 is ${(expected).toFixed(2)}. Friedman asks whether the observed average ranks are too dispersed around this value to be random.`;
+    }
+
+    function updateNemenyi() {
+      const N = +document.getElementById('neN').value;
+      const k = +document.getElementById('neK').value;
+      const D = +document.getElementById('neD').value;
+      document.getElementById('neNOut').value = N;
+      document.getElementById('neKOut').value = k;
+      document.getElementById('neDOut').value = D.toFixed(2);
+      const q = 2.569; // common illustrative value for alpha=0.05, moderate k
+      const CD = q * Math.sqrt(k*(k+1)/(6*N));
+      document.getElementById('nemenyiResult').textContent = `Illustrative CD ≈ ${CD.toFixed(3)} (using a representative q value). Your pairwise average-rank difference is ${D.toFixed(2)} → ${D > CD ? 'bigger than CD: this pair would be significant.' : 'not bigger than CD: this pair would not be declared significant.'}`;
+    }
+
+    function toggleReveal(id) {
+      const el = document.getElementById(id);
+      el.style.display = el.style.display === 'block' ? 'none' : 'block';
+    }
+    window.toggleReveal = toggleReveal;
+
+    function updateRecommendation() {
+      const scope = document.getElementById('scopeSelect').value;
+      const k = document.getElementById('kSelect').value;
+      const evidence = document.getElementById('evidenceSelect').value;
+      const goal = document.getElementById('goalSelect').value;
+      const out = document.getElementById('recommendation');
+      let html = '';
+
+      if (scope === 'one' && k === 'two' && evidence === 'paired_examples') {
+        html = `<strong>Recommended direction:</strong> <b>McNemar test</b>.<br><br>
+        <b>Why:</b> you have two classifiers on the same test examples from one dataset. The observation is one example. The test asks whether disagreement wins are balanced.<br><br>
+        <b>Interpretation question:</b> when the classifiers disagree on examples, does one classifier win more often?`;
+      } else if (scope === 'one' && k === 'two' && evidence === 'repeated_scores') {
+        html = `<strong>Recommended direction:</strong> <b>corrected resampled t-test</b> or <b>5x2cv t/F</b> depending on your exact resampling design.<br><br>
+        <b>Why:</b> repeated splits or repeated CV produce dependent observations. A naive t-test is often unsafe.<br><br>
+        <b>Interpretation question:</b> is the expected performance difference on this one dataset different from zero, after accounting for dependence?`;
+      } else if (scope === 'many' && k === 'two' && (evidence === 'dataset_scores' || evidence === 'dataset_ranks' || goal === 'pair_difference')) {
+        html = `<strong>Recommended direction:</strong> <b>Wilcoxon signed-rank test</b> (Demšar’s main recommendation), or <b>sign test</b> if you want a very simple, weaker win/loss view.<br><br>
+        <b>Why:</b> now the statistical unit is one dataset. Usually each dataset gives one reliable score per classifier (often estimated by CV internally), and the test compares the paired dataset-level differences.<br><br>
+        <b>Interpretation question:</b> does one classifier systematically outperform the other across datasets?`;
+      } else if (scope === 'many' && k === 'many' && goal === 'any_difference') {
+        html = `<strong>Recommended direction:</strong> <b>Friedman test</b> (or repeated-measures ANOVA if you deliberately accept stronger parametric assumptions).<br><br>
+        <b>Why:</b> you have multiple classifiers over the same datasets and first need an omnibus test: is there any difference at all?<br><br>
+        <b>Interpretation question:</b> are the classifiers’ average ranks too different to be explained by chance?`;
+      } else if (scope === 'many' && k === 'many' && goal === 'posthoc_all') {
+        html = `<strong>Recommended direction:</strong> <b>Friedman first</b>, then <b>Nemenyi</b> for all-vs-all pairwise post-hoc comparisons.<br><br>
+        <b>Why:</b> once the omnibus null is rejected, you can ask which pairs differ while controlling for multiple comparisons.`;
+      } else if (scope === 'many' && k === 'many' && goal === 'posthoc_control') {
+        html = `<strong>Recommended direction:</strong> <b>Friedman first</b>, then a <b>control-focused post-hoc test</b> such as <b>Bonferroni-Dunn</b> or <b>Holm</b>.<br><br>
+        <b>Why:</b> if your actual scientific question is “is my new method better than the baselines?”, you gain power by comparing each method only to the control.`;
+      } else if (scope === 'one' && k === 'many') {
+        html = `<strong>Important note:</strong> the classic Demšar hierarchy mainly emphasizes many-dataset comparisons. For many classifiers on one dataset, think in terms of repeated-measures style reasoning, but be very careful about dependence created by resampling.`;
+      } else {
+        html = `<strong>Mixed situation:</strong> start by answering the most important question: <b>what is one observation for the final statistical test?</b> Then decide whether you are in a one-dataset or many-dataset setting.`;
+      }
+      out.innerHTML = html;
+    }
+
+    ['scopeSelect','kSelect','evidenceSelect','goalSelect'].forEach(id => {
+      document.addEventListener('DOMContentLoaded', () => {});
+      window.addEventListener('load', () => {});
+      setTimeout(() => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('change', updateRecommendation);
+      }, 0);
+    });
+
+    function syncNodes() {
+      const scope = document.getElementById('scopeSelect').value;
+      const k = document.getElementById('kSelect').value;
+      document.querySelectorAll('[data-scope]').forEach(n => n.classList.toggle('active', n.dataset.scope === scope));
+      document.querySelectorAll('[data-k]').forEach(n => n.classList.toggle('active', n.dataset.k === k));
+    }
+
+    document.addEventListener('click', (e) => {
+      const scopeNode = e.target.closest('[data-scope]');
+      const kNode = e.target.closest('[data-k]');
+      if (scopeNode) {
+        document.getElementById('scopeSelect').value = scopeNode.dataset.scope;
+        updateRecommendation(); syncNodes();
+      }
+      if (kNode) {
+        document.getElementById('kSelect').value = kNode.dataset.k;
+        updateRecommendation(); syncNodes();
+      }
+    });
+
+    window.addEventListener('load', () => {
+      buildTestNav();
+      renderTest();
+      updateRecommendation();
+      syncNodes();
+      document.getElementById('scopeSelect').addEventListener('change', syncNodes);
+      document.getElementById('kSelect').addEventListener('change', syncNodes);
+    });
+  </script>
+</body>
+</html>

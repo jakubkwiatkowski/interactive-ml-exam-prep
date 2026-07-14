@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sampling / Resampling Hierarchy — richer panel</title>
+<style>
+:root{--bg:#f8fbff;--card:#fff;--ink:#172033;--muted:#5f6f83;--line:#dbeafe;--blue:#2563eb;--orange:#ea580c;--green:#16a34a;--red:#dc2626;--purple:#7c3aed}
+body{font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--ink);margin:0;line-height:1.5}
+header{padding:26px 34px;background:linear-gradient(120deg,#e0f2fe,#eef2ff)}
+.wrap{max-width:1240px;margin:auto;padding:22px}
+.grid{display:grid;grid-template-columns:0.95fr 1.05fr;gap:16px}
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:18px;margin:14px 0;box-shadow:0 4px 12px rgba(15,23,42,.06)}
+h1{margin:0 0 8px} h2{margin-top:0;border-bottom:2px solid var(--line);padding-bottom:8px}
+button{border:1px solid var(--line);background:#fff;border-radius:12px;padding:9px 10px;margin:4px;cursor:pointer;font-weight:700}
+button:hover,button.active{background:#eff6ff;border-color:#2563eb;color:#1d4ed8}
+.level{margin-left:20px;border-left:3px solid #dbeafe;padding-left:12px}
+.note{color:var(--muted)}
+.pill{display:inline-block;border-radius:999px;padding:3px 8px;font-size:12px;font-weight:700;margin:2px;background:#eff6ff;color:#1d4ed8}
+.info-section{border-left:5px solid var(--blue);background:#eff6ff;border-radius:12px;padding:12px;margin:10px 0}
+.good{border-color:var(--green);background:#f0fdf4}.bad{border-color:var(--red);background:#fef2f2}.warn{border-color:var(--orange);background:#fff7ed}.deep{border-color:var(--purple);background:#f5f3ff}
+details{background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:10px 12px;margin:9px 0}
+summary{font-weight:700;cursor:pointer;color:#1d4ed8}
+.controls{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+input,select{width:100%}.val{font-family:ui-monospace,Menlo,monospace;color:var(--blue);font-weight:700}
+svg{width:100%;height:430px;background:#fff;border:1px solid var(--line);border-radius:12px}
+table{border-collapse:collapse;width:100%;margin-top:10px}th,td{border:1px solid var(--line);padding:8px;text-align:left;vertical-align:top}th{background:#f1f5f9}
+@media(max-width:950px){.grid,.controls{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+<h1>Sampling / Resampling Hierarchy for Error Estimation — richer panel</h1>
+<p class="note">Right panel now shows core information directly. Folded sections contain extra depth, not the main explanation.</p>
+</header>
+<div class="wrap">
+<div class="grid">
+<div class="card">
+<h2>Clickable hierarchy</h2>
+<button onclick="show('root')">All Data Regimen</button>
+<div class="level">
+<button onclick="show('holdout')">No re-sampling → Hold-out</button>
+</div>
+<div class="level">
+<button onclick="show('resampling')">Re-sampling</button>
+<div class="level">
+<button onclick="show('resub')">Simple re-sampling → Re-substitution</button>
+<button onclick="show('cv')">Simple re-sampling → Cross-validation</button>
+<div class="level">
+<button onclick="show('nonstrat')">Non-stratified k-fold CV</button>
+<button onclick="show('strat')">Stratified k-fold CV</button>
+<button onclick="show('loo')">Leave-one-out</button>
+</div>
+<button onclick="show('randomsub')">Random sub-sampling</button>
+</div>
+<div class="level">
+<button onclick="show('boot')">Multiple re-sampling → Bootstrapping</button>
+<div class="level">
+<button onclick="show('e0')">E0 bootstrap</button>
+<button onclick="show('b632')">0.632 bootstrap</button>
+</div>
+<button onclick="show('perm')">Randomization → Permutation test</button>
+<button onclick="show('repcv')">Repeated k-fold CV</button>
+<div class="level">
+<button onclick="show('five2')">5×2CV</button>
+<button onclick="show('ten10')">10×10CV</button>
+</div>
+</div>
+</div>
+</div>
+
+<div class="card">
+<h2 id="title">All Data Regimen</h2>
+<div id="tags"></div>
+<div class="info-section"><b>Basic idea</b><p id="basic"></p></div>
+<div class="info-section"><b>What exactly is estimated?</b><p id="target"></p></div>
+<div class="info-section good"><b>Good when</b><p id="good"></p></div>
+<div class="info-section bad"><b>Bad / risky when</b><p id="bad"></p></div>
+<div class="info-section warn"><b>Bias / variance clarification</b><p id="bv"></p></div>
+<div class="info-section deep"><b>Concrete example</b><p id="example"></p></div>
+<div class="info-section warn"><b>Exam trap</b><p id="trap"></p></div>
+
+<details>
+<summary>More detail: practical interpretation</summary>
+<p id="more1"></p>
+</details>
+<details>
+<summary>More detail: relation to other methods</summary>
+<p id="more2"></p>
+</details>
+<details>
+<summary>More detail: equations / computations</summary>
+<p id="more3"></p>
+</details>
+</div>
+</div>
+
+<div class="card">
+<h2>How to choose an error-estimation method</h2>
+<p class="note">These are the practical criteria from the tutorial, expanded with precise meanings.</p>
+<div class="info-section"><b>Domain / dependence structure</b><p>Use random IID splits only if examples are approximately independent. For time series, split chronologically. For patient/user/group data, split by group. For spatial data, consider location-based splits.</p></div>
+<div class="info-section"><b>Dataset size</b><p>Large datasets can often afford a clean hold-out set. Small datasets often need CV or bootstrap because throwing away a large test set leaves too little training data.</p></div>
+<div class="info-section"><b>Bias–variance dependence</b><p>Small training sets can make the learned models worse: this is training-size bias relative to a full-data model. Small test sets make the error estimate noisy: this is variance of the evaluation estimate, not necessarily model variance.</p></div>
+<details><summary>More criteria</summary>
+<p><b>Expected true error rate:</b> if error is very low, small test sets may observe zero errors and look overconfident. If error is high, optimistic methods like resubstitution are especially misleading.</p>
+<p><b>Algorithm type:</b> bootstrap duplicates act like sample weights; some algorithms are sensitive to duplicates/order/permutation.</p>
+<p><b>Computational complexity:</b> LOO trains \(n\) models, 10×10CV trains 100 models, bootstrap can train hundreds or thousands.</p>
+</details>
+</div>
+
+<div class="card">
+<h2>Small comparison simulator</h2>
+<div class="controls">
+<div><label>Dataset size \(n\): <span id="nVal" class="val"></span></label><input id="n" type="range" min="20" max="2000" step="20" value="1000"></div>
+<div><label>Method</label><select id="method">
+<option value="holdout">Hold-out 70/30</option>
+<option value="cv2">2-fold CV</option>
+<option value="cv10">10-fold CV</option>
+<option value="loo">Leave-one-out</option>
+<option value="rrss">Repeated random sub-sampling</option>
+<option value="5x2">5×2CV</option>
+<option value="10x10">10×10CV</option>
+<option value="e0">E0 bootstrap</option>
+<option value="b632">0.632 bootstrap</option>
+<option value="perm">Permutation test sketch</option>
+</select></div>
+<div><label>Train fraction for hold-out/random: <span id="tfVal" class="val"></span></label><input id="tf" type="range" min="50" max="90" step="5" value="70"></div>
+</div>
+<svg id="viz" viewBox="0 0 900 430"></svg>
+<table>
+<tr><th>Models trained</th><th>Train size per model</th><th>Test size per model</th><th>Comment</th></tr>
+<tr><td id="models"></td><td id="train"></td><td id="test"></td><td id="comment"></td></tr>
+</table>
+</div>
+</div>
+
+<script>
+const info={
+root:{
+tags:["root","finite dataset","evaluation design"],
+basic:"We have one finite dataset and want to estimate future/generalization error. The problem is that the same data cannot simultaneously be fully used for training and fully used as independent test data.",
+target:"The target is usually true risk/generalization error R(f), or expected performance of a learning algorithm under a particular training-set size.",
+good:"This root is not a method; it frames the whole evaluation problem.",
+bad:"Confusion starts when we do not specify the target: one fixed classifier, final classifier trained on all data, or learning algorithm averaged over splits.",
+bv:"Training-size issues affect the model being learned. Test-size issues affect variance/noise of the error estimate.",
+example:"With n=1000, a 700/300 split trains one model on 700 and estimates error on 300. A 10-fold CV trains 10 models on 900 each and averages 10 test scores.",
+trap:"Do not say 'CV estimates the risk of one classifier.' It estimates an average over multiple trained classifiers.",
+more1:"The evaluation method should match deployment. Random split estimates IID generalization; time split estimates future generalization; group split estimates unseen-group generalization.",
+more2:"Hold-out is simplest. CV reuses data in folds. Bootstrap uses sampling with replacement. Randomization/permutation is closer to significance testing.",
+more3:"General form: estimator = average loss on test-like examples. The difficulty is how those test-like examples are chosen."
+},
+holdout:{
+tags:["no resampling","one split","independent test"],
+basic:"Split once into training set S and independent test set T. Train one classifier on S and evaluate it once on T.",
+target:"Primarily estimates generalization error of the specific classifier trained on S. If you later train on all data, the hold-out estimate may be pessimistic relative to that final model.",
+good:"Large datasets, clear independent test set, final reporting, black-box classifiers where only predictions are available.",
+bad:"Small datasets, unrepresentative splits, repeated peeking at test set, hyperparameter tuning on test set.",
+bv:"Small S can produce a worse model; small T makes the estimate noisy. The variance here is mainly variance of the error estimate.",
+example:"n=1000, 70/30: train one model on 700, test on 300, get one estimate such as 15% error.",
+trap:"Hold-out can estimate error. It is not invalid. It is just often noisy if T is small.",
+more1:"Because T is independent from S, confidence bounds are cleaner than for CV, assuming the test examples are IID.",
+more2:"Compared with CV, hold-out trains fewer models and is simpler, but uses data less efficiently.",
+more3:"R_T(f)=#errors/|T|. With 0/1 loss, errors are Bernoulli trials for a fixed trained model."
+},
+resampling:{
+tags:["reuse data","many train/test roles"],
+basic:"Resampling methods reuse the dataset in different train/test roles to get more stable performance estimates without reserving one large permanent test set.",
+target:"Usually expected performance of a learning algorithm under the resampling scheme, not just one individual trained classifier.",
+good:"Limited data, need more stable estimates, comparing algorithms, estimating variability.",
+bad:"When data are dependent and resampling breaks structure, e.g. random CV for time series.",
+bv:"Resampling balances training-size bias and test-estimate variance, but it introduces dependence among estimates.",
+example:"In 10-fold CV, every example is tested once, and each model trains on 90% of data.",
+trap:"More resampling does not create new information. It reuses the same information more efficiently.",
+more1:"The purpose is not to magically enlarge the dataset, but to approximate repeated experiments from one dataset.",
+more2:"Bootstrap differs from CV because it samples with replacement and creates out-of-bag test sets.",
+more3:"Most resampling estimates are averages of fold/repetition errors."
+},
+resub:{
+tags:["training error","optimistic"],
+basic:"Train and test on the same data.",
+target:"Estimates training error, not clean future/generalization error.",
+good:"Diagnostic only, or as one component in bootstrap corrections.",
+bad:"Final evaluation; flexible models can overfit and look unrealistically good.",
+bv:"Usually optimistic bias of the error estimator because test examples were seen during training.",
+example:"Train a decision tree on all 1000 examples and test on those same 1000 examples.",
+trap:"Low resubstitution error can simply mean memorization.",
+more1:"The slide says complete overfit can achieve best apparent performance.",
+more2:"0.632 bootstrap combines this optimistic estimate with pessimistic out-of-bag estimate.",
+more3:"E_resub = average loss on the same data used for training."
+},
+cv:{
+tags:["folds","average over models"],
+basic:"Divide data into k folds. Each fold is test once; remaining k−1 folds train. Average the k test errors.",
+target:"Expected performance of the learning algorithm trained on (k−1)/k of the data.",
+good:"General-purpose method for moderate/small datasets; usually stratified for classification.",
+bad:"Time series, grouped data without group-aware folds, very expensive models.",
+bv:"Small k means smaller training sets and more pessimistic training-size bias. Large k gives larger training sets but more overlap/dependence.",
+example:"10-fold CV: 10 models, each trained on 90% and tested on 10%.",
+trap:"CV trains k models; it does not test one fixed model k times.",
+more1:"Fold errors are not fully independent because training sets overlap.",
+more2:"Repeated CV repeats the whole fold-making procedure multiple times.",
+more3:"CV estimate = (1/k) sum_i error_i."
+},
+nonstrat:{
+tags:["CV variant","class proportions not controlled"],
+basic:"k-fold CV where folds are made randomly without preserving class distribution.",
+target:"Same as k-fold CV, but folds may have distorted class proportions.",
+good:"Large balanced datasets where random folds naturally approximate the original distribution.",
+bad:"Imbalanced or small classification datasets.",
+bv:"Fold-to-fold variability can increase because class composition varies.",
+example:"Minority class can accidentally be absent from a fold.",
+trap:"Bad fold composition can make precision/recall/F1 unstable.",
+more1:"For regression, analogous stratification may use bins of the target variable.",
+more2:"Stratification is usually a safe default for classification.",
+more3:"No special formula; only the fold construction changes."
+},
+strat:{
+tags:["CV variant","class-balanced folds"],
+basic:"k-fold CV that preserves the original class distribution in every fold as much as possible.",
+target:"Same target as CV, with more representative folds.",
+good:"Classification, especially imbalanced or small datasets.",
+bad:"Less critical for large balanced datasets; not sufficient for grouped/time-dependent data.",
+bv:"Reduces variance of the estimate due to accidental fold imbalance.",
+example:"If positives are 5%, each fold should have roughly 5% positives.",
+trap:"Stratification does not solve leakage from same patient/time/location appearing in train and test.",
+more1:"For balanced data it still can help, but usually matters less.",
+more2:"For multi-label or grouped data, stratification may need specialized methods.",
+more3:"Fold construction constraint: preserve class proportions."
+},
+loo:{
+tags:["k=n","almost full training"],
+basic:"Leave-one-out CV: each example is used once as a single-item test set; train on all remaining examples.",
+target:"Performance of algorithm trained on n−1 examples.",
+good:"Very small datasets when training is cheap and using nearly all data for training matters.",
+bad:"Large datasets, expensive models, high noise per one-example test fold.",
+bv:"Training-size bias is small because each model uses n−1 examples. But fold estimates are tiny and highly dependent.",
+example:"n=1000 means 1000 trained models, each tested on one example.",
+trap:"LOO does not reveal the true population; it still uses one finite dataset.",
+more1:"Often described as practically unbiased with respect to training-set size, not unbiased in every statistical sense.",
+more2:"Can have high variance in some settings despite large training sets.",
+more3:"LOO estimate = average of n one-example losses."
+},
+randomsub:{
+tags:["repeated hold-out","random splits"],
+basic:"Repeat random train/test splits many times and average errors.",
+target:"Average performance over random partitions with chosen train/test ratio.",
+good:"Simple way to reduce dependence on one hold-out split.",
+bad:"Overlapping test sets; not independent; can break time/group structure.",
+bv:"Averaging reduces split instability but does not remove dependence.",
+example:"Repeat 10 times: 70% train, 30% test.",
+trap:"Ten random splits are not ten independent new datasets.",
+more1:"Useful when you want a quick sense of variability across splits.",
+more2:"Unlike k-fold CV, some examples may be tested many times and others rarely.",
+more3:"Estimate = average over repetitions."
+},
+boot:{
+tags:["with replacement","OOB"],
+basic:"Create many bootstrap training samples by drawing n times with replacement from n examples. Examples not selected are out-of-bag test examples.",
+target:"Performance/variability estimated by treating the empirical sample as an approximation of the population.",
+good:"Small datasets, estimating variability, when repeated pseudo-samples are useful.",
+bad:"Algorithms sensitive to duplicates; nonrepresentative original sample; strong dependence/time/group structure.",
+bv:"Bootstrap can lower variance by averaging many repetitions, but E0 can be biased because each model sees only about 63.2% unique examples.",
+example:"n=1000 bootstrap sample has 1000 positions but about 632 unique examples and 368 OOB examples.",
+trap:"Bootstrap does not create new real information.",
+more1:"Duplicates act like weights. Some algorithms react strongly to that.",
+more2:"E0 uses OOB error. 0.632 mixes OOB with resubstitution error.",
+more3:"P(example not selected)=(1-1/n)^n≈0.368."
+},
+e0:{
+tags:["bootstrap","OOB error"],
+basic:"For each bootstrap sample, train on selected examples and test on out-of-bag examples. Average OOB errors.",
+target:"Out-of-bag estimate of bootstrap-trained model performance.",
+good:"High-error settings and small datasets where OOB testing is useful.",
+bad:"Can be pessimistic relative to a model trained on all unique data.",
+bv:"Lower variance than some CV estimates due to many repetitions, but more bias from reduced unique training information.",
+example:"For B=200 repetitions, compute 200 OOB errors and average them.",
+trap:"Training sample has n positions, not n unique examples.",
+more1:"If OOB set is empty or tiny in small samples, individual repetition errors can be unstable.",
+more2:"0.632 was introduced to correct E0 pessimism.",
+more3:"e0=(1/B) sum_b e0_b."
+},
+b632:{
+tags:["bootstrap correction","weighted mix"],
+basic:"Combine optimistic resubstitution error with pessimistic E0 out-of-bag error.",
+target:"Corrected bootstrap estimate of error.",
+good:"Small datasets, especially when E0 is too pessimistic and resubstitution is too optimistic.",
+bad:"Severe overfitting cases; algorithms where bootstrap assumptions behave poorly.",
+bv:"It explicitly trades two biases: optimistic resubstitution and pessimistic OOB.",
+example:"E_.632 = 0.368 E_resub + 0.632 E0.",
+trap:"Usually E0 is repeated many times; E_resub is often computed once.",
+more1:"The 0.632 weight comes from the expected fraction of unique examples selected at least once.",
+more2:"There is also .632+ bootstrap, but that is beyond the tutorial.",
+more3:"E_.632=0.368E_resub+0.632E0."
+},
+perm:{
+tags:["randomization","significance"],
+basic:"Permutation/randomization creates a reference distribution by shuffling labels or sample/order assignments.",
+target:"Usually asks whether observed performance/difference could occur by chance, rather than estimating one error rate.",
+good:"Sanity checks, significance tests, assessing dependence on labels/order.",
+bad:"If permutation scheme breaks the real data structure; expensive algorithms.",
+bv:"This is more about significance/stability than ordinary bias-variance of error estimates.",
+example:"Shuffle labels and see whether model accuracy remains high; if yes, something suspicious may be happening.",
+trap:"Permutation test is not the same as cross-validation.",
+more1:"Over-label randomization destroys feature-label relationship.",
+more2:"Over-sample permutation may matter for order-sensitive algorithms or split-generation procedures.",
+more3:"Compute observed statistic, permute many times, compare observed to permutation distribution."
+},
+repcv:{
+tags:["repeated CV","many models"],
+basic:"Repeat a full k-fold CV procedure multiple times with different random fold partitions.",
+target:"More stable average estimate of algorithm performance.",
+good:"When one CV partition may be unstable and computation is acceptable.",
+bad:"Expensive; repeated estimates are correlated.",
+bv:"Reduces variability due to fold assignment, but does not create independent datasets.",
+example:"10×10CV = ten separate 10-fold CV runs = 100 trained models.",
+trap:"100 fold scores are not 100 independent experiments.",
+more1:"Repeated CV is often used for more stable reporting.",
+more2:"5×2CV is a special repeated 2-fold protocol historically tied to classifier comparison tests.",
+more3:"Estimate = average over all folds and repetitions."
+},
+five2:{
+tags:["2-fold repeated","Dietterich"],
+basic:"Repeat 2-fold CV five times. Each repetition has two models: train A/test B and train B/test A.",
+target:"Often used in statistical tests for comparing two classifiers.",
+good:"Classifier comparison when using the historical 5×2CV test protocol.",
+bad:"Each model trains on only 50% of data, so performance can be pessimistic relative to full-data training.",
+bv:"Within each repetition, training sets are disjoint. Across repetitions, examples reappear in different roles.",
+example:"5 repetitions × 2 folds = 10 trained models.",
+trap:"It is not chosen because 5 and 2 are universally optimal; it is a named historical protocol.",
+more1:"Ordinary repeated k-fold t-tests can underestimate variance because of overlapping training sets.",
+more2:"2-fold reduces within-repetition overlap, but repetitions are still not fully independent.",
+more3:"Total models = 5×2 = 10."
+},
+ten10:{
+tags:["10-fold repeated","100 models"],
+basic:"Repeat 10-fold CV ten times with different random partitions.",
+target:"Stable repeated estimate of algorithm performance trained on 90% of data.",
+good:"Moderate datasets and affordable training cost.",
+bad:"Expensive models; dependence among fold scores.",
+bv:"Reduces partition randomness, but fold scores remain correlated.",
+example:"n=1000: each model trains on 900, tests on 100; 100 models total.",
+trap:"Do not treat 100 scores as fully independent samples.",
+more1:"Often useful for reporting mean ± variability, but rigorous CI is still tricky.",
+more2:"Compared with single 10-fold CV, it reduces dependence on one arbitrary fold split.",
+more3:"Total models = 10 repetitions × 10 folds = 100."
+}
+};
+
+function show(k){
+ document.querySelectorAll('button').forEach(b=>b.classList.remove('active'));
+ const x=info[k]; title.textContent = Object.keys(info).find(key=>info[key]===x) ? (document.querySelector(`button[onclick="show('${k}')"]`)?.textContent || 'All Data Regimen') : 'All Data Regimen';
+ tags.innerHTML=x.tags.map(t=>`<span class="pill">${t}</span>`).join('');
+ basic.textContent=x.basic; target.textContent=x.target; good.textContent=x.good; bad.textContent=x.bad; bv.textContent=x.bv; example.textContent=x.example; trap.textContent=x.trap;
+ more1.textContent=x.more1; more2.textContent=x.more2; more3.textContent=x.more3;
+}
+function sim(){
+ const n=+document.getElementById('n').value, tf=+document.getElementById('tf').value/100, method=document.getElementById('method').value;
+ nVal.textContent=n; tfVal.textContent=Math.round(tf*100)+'%';
+ let rows=[], mo=1,tr='',te='',co='';
+ const add=(label,trainSegs,testSegs)=>rows.push({label,trainSegs,testSegs});
+ if(method==='holdout'){mo=1;tr=Math.round(tf*n);te=n-tr;co='One trained model, one test estimate.';add('model 1',[[0,tr]],[[tr,te]])}
+ if(method==='cv2'){mo=2;tr=Math.round(.5*n);te=n-tr;co='Two models; each half is test once.';add('model 1: train A → test B',[[0,tr]],[[tr,te]]);add('model 2: train B → test A',[[tr,te]],[[0,tr]])}
+ if(method==='cv10'){mo=10;tr=Math.round(.9*n);te=Math.round(.1*n);co='Ten models; truncated visualization.';for(let i=0;i<4;i++){add('model '+(i+1),[[0,i*te],[ (i+1)*te, n-(i+1)*te]],[[i*te,te]])} add('...',[],[])}
+ if(method==='loo'){mo=n;tr=n-1;te=1;co='n models; truncated visualization.';for(let i=0;i<4;i++){add('model '+(i+1),[[0,i],[i+1,n-i-1]],[[i,1]])} add('...',[],[])}
+ if(method==='rrss'){mo=10;tr=Math.round(tf*n);te=n-tr;co='Example shows 4 of 10 random splits.';for(let r=0;r<4;r++){let start=(r*97)%(n-te);add('split '+(r+1),[[0,start],[start+te,n-start-te]],[[start,te]])} add('...',[],[])}
+ if(method==='5x2'){mo=10;tr=Math.round(.5*n);te=n-tr;co='Five repetitions; each has two models.';for(let r=0;r<5;r++){add('rep '+(r+1)+' / model A→B',[[0,tr]],[[tr,te]]);add('rep '+(r+1)+' / model B→A',[[tr,te]],[[0,tr]])}}
+ if(method==='10x10'){mo=100;tr=Math.round(.9*n);te=Math.round(.1*n);co='Shows first repetition only plus truncation.';for(let i=0;i<4;i++){add('rep 1 / fold '+(i+1),[[0,i*te],[(i+1)*te,n-(i+1)*te]],[[i*te,te]])} add('... 96 more models',[],[])}
+ if(method==='e0'){mo='B bootstrap models';tr='n positions, ~'+Math.round(.632*n)+' unique';te='~'+Math.round(.368*n)+' OOB';co='Each row is one bootstrap sample/OOB evaluation.';for(let r=0;r<5;r++){add('bootstrap '+(r+1),[[0,Math.round(.632*n)]],[[Math.round(.632*n),Math.round(.368*n)]])} add('...',[],[])}
+ if(method==='b632'){mo='B bootstrap models + resub';tr='bootstrap + full data resub';te='OOB + training data';co='E0 is repeated; resubstitution is usually computed once.';add('resubstitution model',[[0,n]],[[0,n]]);for(let r=0;r<4;r++){add('bootstrap OOB '+(r+1),[[0,Math.round(.632*n)]],[[Math.round(.632*n),Math.round(.368*n)]])} add('combine: .368 resub + .632 E0',[],[])}
+ if(method==='perm'){mo='many permutations';tr='depends on protocol';te='depends on protocol';co='Sketch: permute labels/order to create reference distribution.';for(let r=0;r<5;r++){add('permutation '+(r+1),[[0,Math.round(.7*n)]],[[Math.round(.7*n),Math.round(.3*n)]])} add('...',[],[])}
+ models.textContent=mo;train.textContent=tr;test.textContent=te;comment.textContent=co;
+ const svg=viz; svg.innerHTML=''; const W=900,H=430,L=150,R=30,rowH=28,top=35,barW=680;
+ function rect(x,y,w,h,c,op=1){let e=document.createElementNS('http://www.w3.org/2000/svg','rect');e.setAttribute('x',x);e.setAttribute('y',y);e.setAttribute('width',Math.max(0,w));e.setAttribute('height',h);e.setAttribute('rx',5);e.setAttribute('fill',c);e.setAttribute('opacity',op);svg.appendChild(e)}
+ function txt(x,y,s,c='#334155',size=12){let e=document.createElementNS('http://www.w3.org/2000/svg','text');e.setAttribute('x',x);e.setAttribute('y',y);e.setAttribute('font-size',size);e.setAttribute('fill',c);e.textContent=s;svg.appendChild(e)}
+ txt(20,20,'Each row = a newly trained model / evaluation', '#334155', 13);
+ rows.slice(0,13).forEach((row,idx)=>{
+  let y=top+idx*rowH;
+  txt(12,y+18,row.label,'#334155',11);
+  rect(L,y,barW,18,'#f1f5f9');
+  if(row.label.startsWith('...') || row.label.startsWith('combine')){txt(L+10,y+14,row.label,'#64748b',12); return;}
+  row.trainSegs.forEach(s=>rect(L+s[0]/n*barW,y,s[1]/n*barW,18,'#60a5fa',.85));
+  row.testSegs.forEach(s=>rect(L+s[0]/n*barW,y,s[1]/n*barW,18,'#fb923c',.9));
+ });
+ txt(L,400,'blue=train / unique train      orange=test / OOB', '#334155', 13);
+}
+document.getElementById('n').oninput=sim;document.getElementById('tf').oninput=sim;document.getElementById('method').onchange=sim;
+show('root'); sim();
+</script>
+</body>
+</html>

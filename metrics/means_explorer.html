@@ -1,0 +1,49 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Means Explorer</title>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<script>window.MathJax={tex:{inlineMath:[['\\(','\\)'],['$','$']]}};</script>
+<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<style>
+body{font-family:Arial;margin:0;background:#f6f7fb;color:#222}header{background:#1f2937;color:#fff;padding:18px 24px}
+main{display:grid;grid-template-columns:350px 1fr;gap:16px;padding:16px}.card{background:#fff;border-radius:12px;padding:14px;box-shadow:0 1px 6px #0002;margin-bottom:14px}
+#surface,#slice,#cross{height:420px}.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.kpi{background:#eef2f7;border-radius:8px;padding:8px;text-align:center}.kpi b{display:block;font-size:18px}
+label{display:block;margin-top:10px;font-weight:700}.small{font-size:13px;color:#555;line-height:1.45}.note{background:#eef2ff;border-left:4px solid #4f46e5;padding:10px;border-radius:8px}
+</style></head><body>
+<header><h2 style="margin:0">Arithmetic, Geometric and Harmonic Means Explorer</h2><div class="small" style="color:#d1d5db">Compare the three means and see why F1 uses the harmonic mean while G-mean uses the geometric mean.</div></header>
+<main><section>
+<div class="card"><label>A: <span id="av"></span></label><input id="a" type="range" min="0.01" max="1" step="0.01" value="0.90">
+<label>B: <span id="bv"></span></label><input id="b" type="range" min="0.01" max="1" step="0.01" value="0.20"><div id="kpis" class="kpis" style="margin-top:12px"></div>
+<div class="note" style="margin-top:12px">For positive values:
+\[
+H(A,B)\le G(A,B)\le A_{arith}(A,B).
+\]
+All three are equal only when \(A=B\).</div></div>
+<div class="card"><h3>Equations</h3>\[
+Arithmetic=\frac{A+B}{2}
+\]
+\[
+Geometric=\sqrt{AB}
+\]
+\[
+Harmonic=\frac{2}{1/A+1/B}=\frac{2AB}{A+B}
+\]
+<p class="small">The harmonic mean stays closest to the smaller value. The geometric mean also penalizes imbalance, but less aggressively. The arithmetic mean treats the two values additively.</p></div>
+</section><section>
+<div class="card"><h3>3D surfaces over A and B</h3><div id="surface"></div></div>
+<div class="card"><h3>Hold B fixed and vary A</h3><div id="slice"></div></div>
+<div class="card"><h3>A rises while B falls</h3><div id="cross"></div></div>
+</section></main>
+<script>
+function vals(a,b){return{ar:(a+b)/2,geo:Math.sqrt(a*b),har:2*a*b/(a+b)}}
+function update(){
+ const A=+a.value,B=+b.value,v=vals(A,B);av.textContent=A.toFixed(2);bv.textContent=B.toFixed(2);
+ kpis.innerHTML=[['Arithmetic',v.ar],['Geometric',v.geo],['Harmonic',v.har]].map(([n,x])=>`<div class="kpi"><span>${n}</span><b>${x.toFixed(3)}</b></div>`).join('');
+ const grid=Array.from({length:31},(_,i)=>.01+i*.99/30),X=[],Y=[],ZA=[],ZG=[],ZH=[];
+ grid.forEach(y=>{X.push(grid);Y.push(grid.map(()=>y));ZA.push(grid.map(x=>(x+y)/2));ZG.push(grid.map(x=>Math.sqrt(x*y)));ZH.push(grid.map(x=>2*x*y/(x+y)))});
+ Plotly.react('surface',[{type:'surface',x:X,y:Y,z:ZA,opacity:.42,showscale:false,name:'Arithmetic'},{type:'surface',x:X,y:Y,z:ZG,opacity:.42,showscale:false,name:'Geometric'},{type:'surface',x:X,y:Y,z:ZH,opacity:.42,showscale:false,name:'Harmonic'}],{margin:{l:0,r:0,b:0,t:10},scene:{xaxis:{title:'A'},yaxis:{title:'B'},zaxis:{title:'Mean',range:[0,1]}}},{responsive:true});
+ const xs=Array.from({length:100},(_,i)=>.01+i*.99/99);
+ Plotly.react('slice',[{x:xs,y:xs.map(x=>(x+B)/2),type:'scatter',mode:'lines',name:'Arithmetic'},{x:xs,y:xs.map(x=>Math.sqrt(x*B)),type:'scatter',mode:'lines',name:'Geometric'},{x:xs,y:xs.map(x=>2*x*B/(x+B)),type:'scatter',mode:'lines',name:'Harmonic'}],{margin:{l:55,r:15,b:50,t:10},xaxis:{title:'A',range:[0,1]},yaxis:{title:`Mean with B=${B.toFixed(2)}`,range:[0,1]}},{responsive:true});
+ const t=Array.from({length:101},(_,i)=>i/100),bb=t.map(x=>1-x);
+ Plotly.react('cross',[{x:t,y:t,type:'scatter',mode:'lines',line:{dash:'dot'},name:'A=t'},{x:t,y:bb,type:'scatter',mode:'lines',line:{dash:'dot'},name:'B=1−t'},{x:t,y:t.map((x,i)=>(x+bb[i])/2),type:'scatter',mode:'lines',name:'Arithmetic'},{x:t,y:t.map((x,i)=>Math.sqrt(x*bb[i])),type:'scatter',mode:'lines',name:'Geometric'},{x:t,y:t.map((x,i)=>2*x*bb[i]/(x+bb[i])),type:'scatter',mode:'lines',name:'Harmonic'}],{margin:{l:55,r:15,b:50,t:10},xaxis:{title:'t'},yaxis:{title:'Value',range:[0,1]}},{responsive:true});
+}
+[a,b].forEach(e=>e.addEventListener('input',update));update();
+</script></body></html>
