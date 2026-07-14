@@ -8,9 +8,8 @@ Interactive HTML visualisations and study aids for machine learning evaluation e
 
 These projects are based on the following sources:
 
-- `demsar06a.pdf` — Demšar, J. (2006). *Statistical Comparisons of Classifiers over Multiple Data Sets*. Journal of Machine Learning Research, 7, 1–30.
-- `ICML2012-Tutorial.pdf` — Flach, P. A. (2012). *ROC Analysis* (ICML 2012 Tutorial).
-- `ICML2012-Tutorial-1.pdf` — Flach, P. A. (2012). *ROC Analysis* (ICML 2012 Tutorial) [duplicate copy].
+- Demšar, J. (2006). *Statistical Comparisons of Classifiers over Multiple Data Sets*. Journal of Machine Learning Research, 7, 1–30.
+- Flach, P. A. (2012). *ROC Analysis* (ICML 2012 Tutorial).
 
 ---
 
