@@ -10,7 +10,7 @@ These projects are based on the following sources:
 
 - Demšar, J. (2006). *Statistical Comparisons of Classifiers over Multiple Data Sets*. Journal of Machine Learning Research, 7, 1–30.
 - Flach, P. A. (2003). *The Geometry of ROC Space: Understanding Machine Learning Metrics through ROC Isometrics*. ICML 2003.
-- Flach, P. A. (2012). *ROC Analysis* (ICML 2012 Tutorial).
+- Japkowicz, N. & Shah, M. (2012). *Evaluating Learning Algorithms: A Classification Perspective* (ICML 2012 Tutorial).
 
 ---
 
